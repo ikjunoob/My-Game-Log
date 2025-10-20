@@ -43,7 +43,7 @@ router.patch("/:id", protect, async (req, res) => {
 // 삭제
 router.delete("/:id", protect, async (req, res) => {
     await Log.findByIdAndDelete(req.params.id);
-    res.json({ message: "Deleted successfully" });
+    res.json({ message: "삭제되었습니다" });
 });
 
 export default router;

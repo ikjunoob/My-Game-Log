@@ -20,7 +20,7 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
 // 특정 로그 삭제
 router.delete("/logs/:id", protect, adminOnly, async (req, res) => {
     await Log.findByIdAndDelete(req.params.id);
-    res.json({ message: "Log deleted by admin" });
+    res.json({ message: "관리자에 의해 로그가 삭제되었습니다" });
 });
 
 export default router;
