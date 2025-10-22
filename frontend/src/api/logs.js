@@ -5,4 +5,8 @@ export const createLog = async (formData) => (await api.post("/api/logs", formDa
     headers: { "Content-Type": "multipart/form-data" },
 })).data;
 export const updateLog = async (id, body) => (await api.patch(`/api/logs/${id}`, body)).data;
+export const updateLogForm = async (id, fd) =>
+    (await api.patch(`/api/logs/${id}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+    })).data;
 export const deleteLog = async (id) => (await api.delete(`/api/logs/${id}`)).data;

@@ -7,12 +7,12 @@ import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
-
 import Create from "./pages/Log/Create";
 import Edit from "./pages/Log/Edit";
 
 import ProtectRoute from "./components/ProtectRoute";
 import AdminRoute from "./components/AdminRoute";
+import Header from "./components/Header";
 import "./App.scss";
 
 export default function App() {
@@ -24,23 +24,30 @@ export default function App() {
   const isAuthed = !!token;
   const location = useLocation();
 
-  // 로그인/로그아웃 시 localStorage 동기화
   const handleAuthed = ({ token, user }) => {
     setToken(token || null);
     setUser(user || null);
-    if (token) localStorage.setItem("token", token);
-    else localStorage.removeItem("token");
-    if (user) localStorage.setItem("user", JSON.stringify(user));
-    else localStorage.removeItem("user");
+    if (token) localStorage.setItem("token", token); else localStorage.removeItem("token");
+    if (user) localStorage.setItem("user", JSON.stringify(user)); else localStorage.removeItem("user");
   };
 
-  // 새로고침 시에도 localStorage 값으로 유지됨
-  useEffect(() => {
-    // 추가 동작이 필요하면 여기서
-  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setToken(null);
+    setUser(null);
+  };
+
+  // 헤더를 숨길 페이지(랜딩/로그인/회원가입)
+  const hideHeaderOn = new Set(["/", "/login", "/register"]);
+  const showHeader = isAuthed && !hideHeaderOn.has(location.pathname);
+
+  useEffect(() => { }, []);
 
   return (
     <div className="page">
+      {showHeader && <Header user={user} onLogout={handleLogout} />}
+
       <Routes>
         <Route path="/" element={<Landing />} />
 
@@ -54,7 +61,7 @@ export default function App() {
         {/* 사용자 보호 구역 */}
         <Route element={<ProtectRoute isAuthed={isAuthed} />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/logs/new" element={<Create />} />       {/* ✅ 새 기록 */}
+          <Route path="/logs/new" element={<Create />} />
           <Route path="/logs/:id/edit" element={<Edit />} />
         </Route>
 

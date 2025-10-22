@@ -1,0 +1,27 @@
+// src/components/Header.jsx
+import { Link, useNavigate } from "react-router-dom";
+
+export default function Header({ user, onLogout }) {
+    const nav = useNavigate();
+    const handleLogout = () => {
+        onLogout?.();
+        nav("/login", { replace: true });
+    };
+
+    return (
+        <header style={{
+            position: "sticky", top: 0, zIndex: 10,
+            background: "var(--card)", borderBottom: "1px solid var(--border)"
+        }}>
+            <div className="container" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
+                <Link to="/dashboard" style={{ fontWeight: 700 }}>나의 게임 기록</Link>
+                <nav style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
+                    <Link className="btn" to="/dashboard">대시보드</Link>
+                    {user?.role === "admin" && <Link className="btn" to="/admin">관리자</Link>}
+                    <span style={{ alignSelf: "center", color: "var(--muted)" }}>{user?.username}</span>
+                    <button className="btn" onClick={handleLogout}>로그아웃</button>
+                </nav>
+            </div>
+        </header>
+    );
+}
