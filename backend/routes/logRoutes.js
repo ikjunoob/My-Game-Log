@@ -30,20 +30,34 @@ router.post("/", protect, upload.single("image"), async (req, res) => {
 
 // 전체 기록 조회
 router.get("/", protect, async (req, res) => {
-    const logs = await Log.find();
-    res.json(logs);
+    try {
+        const logs = await Log.find();
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // 수정
 router.patch("/:id", protect, async (req, res) => {
-    const updated = await Log.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updated);
+    try {
+        const updated = await Log.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!updated) return res.status(404).json({ message: "존재하지 않는 로그" });
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // 삭제
 router.delete("/:id", protect, async (req, res) => {
-    await Log.findByIdAndDelete(req.params.id);
-    res.json({ message: "삭제되었습니다" });
+    try {
+        const removed = await Log.findByIdAndDelete(req.params.id);
+        if (!removed) return res.status(404).json({ message: "이미 삭제되었거나 없음" });
+        res.json({ message: "삭제되었습니다" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 export default router;

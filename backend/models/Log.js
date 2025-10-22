@@ -6,6 +6,6 @@ const logSchema = new mongoose.Schema({
     result: { type: String, required: true },
     notes: { type: String },
     imageUrl: { type: String }
-});
+}, { timestamps: true }); // ✅ 추가
 
 export default mongoose.model("Log", logSchema);
