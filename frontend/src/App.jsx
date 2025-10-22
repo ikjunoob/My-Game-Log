@@ -8,6 +8,9 @@ import Register from "./pages/Auth/Register";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 
+import Create from "./pages/Log/Create";
+import Edit from "./pages/Log/Edit";
+
 import ProtectRoute from "./components/ProtectRoute";
 import AdminRoute from "./components/AdminRoute";
 import "./App.scss";
