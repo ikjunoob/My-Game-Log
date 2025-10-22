@@ -1,6 +1,6 @@
-/* src/App.scss */
-@import './styles/_tokens.scss';
+@use './styles/_tokens.scss' as *;
 
+/* 이하 기존 스타일 유지 */
 html,
 body,
 #root {

@@ -54,6 +54,8 @@ export default function App() {
         {/* 사용자 보호 구역 */}
         <Route element={<ProtectRoute isAuthed={isAuthed} />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/logs/new" element={<Create />} />       {/* ✅ 새 기록 */}
+          <Route path="/logs/:id/edit" element={<Edit />} />
         </Route>
 
         {/* 관리자 보호 구역 */}
