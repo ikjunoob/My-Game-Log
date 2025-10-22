@@ -1,12 +1,11 @@
-import api from "./axios";
+// src/api/logs.js
+import api from "./client";
 
 export const listLogs = async () => (await api.get("/api/logs")).data;
-export const createLog = async (formData) => (await api.post("/api/logs", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-})).data;
+export const createLog = async (body) => (await api.post("/api/logs", body)).data;      // JSON(meta)
 export const updateLog = async (id, body) => (await api.patch(`/api/logs/${id}`, body)).data;
-export const updateLogForm = async (id, fd) =>
-    (await api.patch(`/api/logs/${id}`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-    })).data;
 export const deleteLog = async (id) => (await api.delete(`/api/logs/${id}`)).data;
+
+// ✅ 공개 피드
+export const listPublicFeed = async () => (await api.get("/api/logs/public/feed")).data;
+

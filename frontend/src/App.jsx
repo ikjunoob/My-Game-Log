@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Create from "./pages/Log/Create";
 import Edit from "./pages/Log/Edit";
+import Feed from "./pages/Feed";
 
 import ProtectRoute from "./components/ProtectRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/logs/new" element={<Create />} />
           <Route path="/logs/:id/edit" element={<Edit />} />
+          <Route path="/feed" element={<Feed />} />
         </Route>
 
         {/* 관리자 보호 구역 */}

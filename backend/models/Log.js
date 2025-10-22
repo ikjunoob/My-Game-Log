@@ -1,20 +1,24 @@
+// backend/models/Log.js
 import mongoose from "mongoose";
 
 const logSchema = new mongoose.Schema(
     {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
         game: { type: String, required: true, trim: true },
-        date: { type: String, required: true },
-        result: { type: String, required: true },
+        date: { type: String, required: true, trim: true },
+        result: { type: String, required: true, trim: true },
         notes: { type: String, trim: true },
-        // 단일 이미지라면 imageUrl/String, 여러 장이면 배열
+
+        // S3 메타 (단일 이미지 기준)
         image: {
-            key: { type: String, trim: true },   // S3 object key
-            url: { type: String, trim: true }    // 퍼블릭 URL 또는 서명 GET URL
+            key: { type: String, trim: true },
+            url: { type: String, trim: true }, // 퍼블릭 버킷이면 이걸 그대로 <img src>로 사용
         },
-        isPublic: { type: Boolean, default: true } // 공개 여부(나중에 옵션화)
+
+        isPublic: { type: Boolean, default: true }, // 공개 피드 노출 여부
     },
-    { timestamps: true } // ✅ createdAt/updatedAt 자동
+    { timestamps: true }
 );
 
 export default mongoose.model("Log", logSchema);
+
