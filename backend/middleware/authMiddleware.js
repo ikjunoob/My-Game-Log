@@ -1,19 +1,24 @@
 import jwt from "jsonwebtoken";
 
 export const protect = (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "토큰이 주어지지 않았습니다" });
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer "))
+        return res.status(401).json({ message: "인증 토큰이 필요합니다" });
 
+    const token = auth.split(" ")[1];
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     } catch (err) {
+        if (err.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "토큰이 만료되었습니다" });
+        }
         res.status(401).json({ message: "유효하지 않은 토큰입니다" });
     }
 };
 
 export const adminOnly = (req, res, next) => {
-    if (req.user?.role === "admin") next();
-    else res.status(403).json({ message: "접근이 거부되었습니다" });
+    if (req.user?.role === "admin") return next();
+    res.status(403).json({ message: "관리자만 접근 가능합니다" });
 };
