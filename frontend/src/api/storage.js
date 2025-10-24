@@ -1,4 +1,4 @@
-import api from "./client";
+import api from "./axios";
 
 // 1) 서버에서 presign URL 발급
 export async function presign(filename, contentType) {

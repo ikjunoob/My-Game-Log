@@ -1,5 +1,5 @@
 // src/api/logs.js
-import api from "./client";
+import api from "./axios";
 
 export const listLogs = async () => (await api.get("/api/logs")).data;
 export const createLog = async (body) => (await api.post("/api/logs", body)).data;      // JSON(meta)
