@@ -8,9 +8,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
 
-    // 백엔드 절대주소 (이미지에 필요)
-    const API_URL = import.meta.env.VITE_API_URL || "";
-
     const fetchLogs = async () => {
         setErr("");
         setLoading(true);
@@ -24,9 +21,7 @@ export default function Dashboard() {
         }
     };
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
+    useEffect(() => { fetchLogs(); }, []);
 
     const onDelete = async (id) => {
         if (!confirm("삭제할까요?")) return;
@@ -34,25 +29,12 @@ export default function Dashboard() {
         setLogs((s) => s.filter((v) => v._id !== id));
     };
 
-    // 이미지 URL 보정 (상대경로 → 절대경로)
-    const toImageSrc = (url) => {
-        if (!url) return "";
-        const safe = encodeURI(url); // 한글/공백 파일명 안전 처리
-        return safe.startsWith("http") ? safe : API_URL + safe;
-    };
-
-    if (loading)
-        return (
-            <div className="container" style={{ padding: "2rem" }}>
-                로딩...
-            </div>
-        );
-    if (err)
-        return (
-            <div className="container" style={{ padding: "2rem", color: "var(--danger)" }}>
-                {err}
-            </div>
-        );
+    if (loading) {
+        return <div className="container" style={{ padding: "2rem" }}>로딩...</div>;
+    }
+    if (err) {
+        return <div className="container" style={{ padding: "2rem", color: "var(--danger)" }}>{err}</div>;
+    }
 
     return (
         <div className="container" style={{ padding: "2rem" }}>
@@ -71,14 +53,14 @@ export default function Dashboard() {
                     {logs.map((l) => (
                         <li key={l._id} className="card" style={{ padding: "12px" }}>
                             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                                {l.imageUrl && (
+                                {l.image?.url && (
                                     <img
-                                        src={toImageSrc(l.imageUrl)}
+                                        src={l.image.url}
                                         alt=""
                                         width={72}
                                         height={72}
                                         style={{ objectFit: "cover", borderRadius: 8 }}
-                                        onError={(e) => (e.currentTarget.style.display = "none")} // 깨진 이미지 숨김
+                                        onError={(e) => (e.currentTarget.style.display = "none")}
                                     />
                                 )}
                                 <div style={{ flex: 1 }}>

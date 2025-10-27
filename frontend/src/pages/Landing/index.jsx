@@ -11,11 +11,16 @@ export default function Landing() {
                     <h1>나의 게임 기록</h1>
                     <p className="landing-sub">게임 결과를 간단히 기록하고, 나중에 다시 보자.</p>
                     {token ? (
-                        <Link className="btn" to="/dashboard">대시보드로 가기</Link>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <Link className="btn" to="/dashboard">대시보드로 가기</Link>
+                            <Link className="btn" to="/feed">공개 피드 보기</Link>
+                        </div>
                     ) : (
                         <div style={{ display: "flex", gap: "10px" }}>
                             <Link className="btn" to="/login">시작하기</Link>
                             <Link className="btn" to="/register">회원가입</Link>
+                            {/* ✅ 비로그인도 피드 볼 수 있게 */}
+                            <Link className="btn" to="/feed">공개 피드</Link>
                         </div>
                     )}
                 </div>

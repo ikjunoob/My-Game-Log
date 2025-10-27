@@ -16,6 +16,7 @@ export default function Header({ user, onLogout }) {
             <div className="container" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
                 <Link to="/dashboard" style={{ fontWeight: 700 }}>나의 게임 기록</Link>
                 <nav style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
+                    <Link className="btn" to="/feed">피드</Link>
                     <Link className="btn" to="/dashboard">대시보드</Link>
                     {user?.role === "admin" && <Link className="btn" to="/admin">관리자</Link>}
                     <span style={{ alignSelf: "center", color: "var(--muted)" }}>{user?.username}</span>

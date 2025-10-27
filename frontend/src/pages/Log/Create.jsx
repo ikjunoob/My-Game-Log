@@ -2,23 +2,21 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { presign, putToS3 } from "../../api/storage";
 import { createLog } from "../../api/logs";
-import LogForm from "./LogForm"; // 기존 폼 재사용 (image 파일 필드 포함)
+import LogForm from "./LogForm";
 
 export default function Create() {
     const nav = useNavigate();
     const [submitting, setSubmitting] = useState(false);
 
-    // ⬇️ 질문에 준 코드가 바로 이 함수입니다
     async function handleCreate(form) {
         setSubmitting(true);
         try {
             let imageMeta = null;
 
-            // form.image(또는 imageFile) : LogForm에서 넘겨주는 File 객체
             if (form.image) {
                 const p = await presign(form.image.name, form.image.type);
                 await putToS3(p.uploadUrl, form.image);
-                imageMeta = { key: p.key, url: p.viewUrl }; // viewUrl 없으면 key만 저장
+                imageMeta = { key: p.key, url: p.viewUrl || null };
             }
 
             await createLog({
@@ -27,7 +25,7 @@ export default function Create() {
                 result: form.result,
                 notes: form.notes,
                 image: imageMeta,
-                isPublic: true,
+                isPublic: form.isPublic, // ✅ 폼 값 사용
             });
 
             nav("/dashboard", { replace: true });

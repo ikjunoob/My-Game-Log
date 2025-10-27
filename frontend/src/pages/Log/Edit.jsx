@@ -1,5 +1,4 @@
-// src/pages/Log/Edit.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { listLogs, updateLog } from "../../api/logs";
 import { presign, putToS3 } from "../../api/storage";
@@ -11,10 +10,9 @@ export default function Edit() {
     const loc = useLocation();
 
     const [submitting, setSubmitting] = useState(false);
-    const [initial, setInitial] = useState(loc.state?.log || null);
+    const [initial, setInitial] = useState(() => loc.state?.log || null);
     const [err, setErr] = useState("");
 
-    // 새로고침으로 state가 없을 때 대비: 목록에서 찾아옴
     useEffect(() => {
         if (initial) return;
         (async () => {
@@ -22,7 +20,7 @@ export default function Edit() {
                 const data = await listLogs();
                 const found = data.find((v) => v._id === id);
                 setInitial(found || null);
-            } catch (e) {
+            } catch {
                 setErr("기록을 불러오지 못했습니다.");
             }
         })();
@@ -34,7 +32,6 @@ export default function Edit() {
         try {
             let imageField = undefined;
             if (f.image instanceof File) {
-                // 간단 파일 검증(2MB 이하)
                 if (!/^image\//.test(f.image.type)) throw new Error("이미지 파일만 업로드 가능합니다.");
                 if (f.image.size > 2 * 1024 * 1024) throw new Error("이미지는 2MB 이하만 허용합니다.");
 
@@ -44,8 +41,12 @@ export default function Edit() {
             }
 
             const payload = {
-                game: f.game, date: f.date, result: f.result, notes: f.notes,
-                ...(imageField ? { image: imageField } : {}), // 새 파일 있을 때만 교체
+                game: f.game,
+                date: f.date,
+                result: f.result,
+                notes: f.notes,
+                isPublic: f.isPublic, // ✅ 수정 반영
+                ...(imageField ? { image: imageField } : {}),
             };
 
             await updateLog(id, payload);
@@ -63,9 +64,8 @@ export default function Edit() {
         <div className="container" style={{ padding: "2rem" }}>
             <h2>기록 수정</h2>
             {err && <div style={{ color: "var(--danger)", marginBottom: 8 }}>{err}</div>}
-            <LogForm defaultValue={initial} onSubmit={handleSubmit} submitting={submitting} />
+            <LogForm initial={initial} onSubmit={handleSubmit} submitting={submitting} />
             <p style={{ color: "var(--muted)", marginTop: 8 }}>※ 새 이미지를 선택하지 않으면 기존 이미지를 유지합니다.</p>
         </div>
     );
 }
-

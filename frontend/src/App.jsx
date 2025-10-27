@@ -52,19 +52,24 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
 
-        <Route path="/login" element={
-          isAuthed ? <Navigate to="/dashboard" replace /> : <Login onAuthed={handleAuthed} />
-        } />
-        <Route path="/register" element={
-          isAuthed ? <Navigate to="/dashboard" replace /> : <Register />
-        } />
+        {/* 로그인/회원가입 */}
+        <Route
+          path="/login"
+          element={isAuthed ? <Navigate to="/dashboard" replace /> : <Login onAuthed={handleAuthed} />}
+        />
+        <Route
+          path="/register"
+          element={isAuthed ? <Navigate to="/dashboard" replace /> : <Register />}
+        />
+
+        {/* ✅ 공개 피드: 누구나 접근 가능 */}
+        <Route path="/feed" element={<Feed />} />
 
         {/* 사용자 보호 구역 */}
         <Route element={<ProtectRoute isAuthed={isAuthed} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/logs/new" element={<Create />} />
           <Route path="/logs/:id/edit" element={<Edit />} />
-          <Route path="/feed" element={<Feed />} />
         </Route>
 
         {/* 관리자 보호 구역 */}
