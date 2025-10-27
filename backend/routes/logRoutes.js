@@ -39,7 +39,9 @@ router.get("/public/feed", async (_req, res) => {
     try {
         const logs = await Log.find({ isPublic: true })
             .sort({ createdAt: -1 })
-            .limit(100);
+            .limit(100)
+            .select("game date result notes image createdAt userId")
+            .populate("userId", "username"); // 작성자 이름 포함
         res.json(logs);
     } catch (err) {
         res.status(500).json({ message: err.message });
