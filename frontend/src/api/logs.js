@@ -7,7 +7,13 @@ export const updateLog = async (id, body) => (await api.patch(`/api/logs/${id}`,
 export const deleteLog = async (id) => (await api.delete(`/api/logs/${id}`)).data;
 
 // 공개 피드
-export const listPublicFeed = async () => (await api.get("/api/logs/public/feed")).data;
+export const listPublicFeed = async (params = {}) => {
+    const p = new URLSearchParams(params);
+    return (await api.get(`/api/logs/public/feed?${p.toString()}`)).data;
+};
+
+export const toggleLike = async (id) =>
+    (await api.post(`/api/logs/${id}/like`)).data;
 
 // ✅ 내 로그 검색
 export const searchMyLogs = async ({ q, from, to } = {}) => {
@@ -19,3 +25,4 @@ export const searchMyLogs = async ({ q, from, to } = {}) => {
     const url = qs ? `/api/logs/search?${qs}` : "/api/logs/search";
     return (await api.get(url)).data;
 };
+

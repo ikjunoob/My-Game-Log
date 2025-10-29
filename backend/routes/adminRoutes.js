@@ -132,4 +132,25 @@ router.delete("/logs/:id", protect, adminOnly, async (req, res) => {
     }
 });
 
+router.delete("/users/:id", protect, adminOnly, async (req, res) => {
+    try {
+        const uid = req.params.id;
+
+        // 사용자의 로그 모두 삭제 + S3 정리
+        const logs = await Log.find({ userId: uid });
+        for (const l of logs) {
+            if (l.image?.key) { try { await deleteS3Object(l.image.key); } catch { } }
+        }
+        await Log.deleteMany({ userId: uid });
+
+        // 유저 삭제
+        const gone = await User.findByIdAndDelete(uid);
+        if (!gone) return res.status(404).json({ message: "유저 없음" });
+
+        res.json({ message: "강제탈퇴 완료" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 export default router;

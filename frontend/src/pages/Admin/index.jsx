@@ -4,32 +4,39 @@ import {
     adminSearchUsers,
     adminSearchLogs,
     adminDeleteLog,
+    adminDeleteUser,
 } from "../../api/admin";
 
 export default function Admin() {
-    const [tab, setTab] = useState("users"); // users | logs
+    const [tab, setTab] = useState("users"); // "users" | "logs"
     const [users, setUsers] = useState([]);
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState("");
 
-    // ✅ 검색 상태 (유저)
+    // ── Users search state
     const [uq, setUq] = useState("");
     const [urole, setUrole] = useState(""); // "", "user", "admin"
     const [ufrom, setUfrom] = useState("");
     const [uto, setUto] = useState("");
 
-    // ✅ 검색 상태 (로그)
+    // ── Logs search state
     const [lq, setLq] = useState(""); // game/result/notes
-    const [luser, setLuser] = useState(""); // username
+    const [luser, setLuser] = useState(""); // username (작성자)
     const [lfrom, setLfrom] = useState("");
     const [lto, setLto] = useState("");
     const [lpub, setLpub] = useState(""); // "", "true", "false"
 
     async function fetchUsers() {
-        setLoading(true); setErr("");
+        setLoading(true);
+        setErr("");
         try {
-            const data = await adminSearchUsers({ q: uq, role: urole, from: ufrom, to: uto });
+            const data = await adminSearchUsers({
+                q: uq,
+                role: urole,
+                from: ufrom,
+                to: uto,
+            });
             setUsers(Array.isArray(data) ? data : []);
         } catch (e) {
             setErr(e?.response?.data?.message || "유저 목록을 불러오지 못했습니다.");
@@ -39,7 +46,8 @@ export default function Admin() {
     }
 
     async function fetchLogs() {
-        setLoading(true); setErr("");
+        setLoading(true);
+        setErr("");
         try {
             const data = await adminSearchLogs({
                 q: lq,
@@ -59,6 +67,7 @@ export default function Admin() {
     useEffect(() => {
         fetchUsers();
         fetchLogs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleDeleteLog = async (id) => {
@@ -72,19 +81,50 @@ export default function Admin() {
         }
     };
 
+    const handleDeleteUser = async (u) => {
+        if (
+            !confirm(
+                `[${u.username}] 유저를 강제탈퇴 시킬까요?\n- 이 유저가 작성한 모든 로그와 이미지가 삭제됩니다.`
+            )
+        )
+            return;
+        try {
+            await adminDeleteUser(u._id);
+            alert("강제탈퇴 완료");
+            await Promise.all([fetchUsers(), fetchLogs()]);
+        } catch (e) {
+            alert(e?.response?.data?.message || "강제탈퇴 실패");
+        }
+    };
+
     return (
         <div className="container" style={{ padding: "2rem" }}>
             <h2>관리자 페이지</h2>
 
             {/* 탭 */}
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button className="btn" onClick={() => setTab("users")} style={{ opacity: tab === "users" ? 1 : 0.6 }}>
+                <button
+                    className="btn"
+                    onClick={() => setTab("users")}
+                    style={{ opacity: tab === "users" ? 1 : 0.6 }}
+                >
                     유저
                 </button>
-                <button className="btn" onClick={() => setTab("logs")} style={{ opacity: tab === "logs" ? 1 : 0.6 }}>
+                <button
+                    className="btn"
+                    onClick={() => setTab("logs")}
+                    style={{ opacity: tab === "logs" ? 1 : 0.6 }}
+                >
                     전체 로그
                 </button>
-                <button className="btn" onClick={() => { fetchUsers(); fetchLogs(); }} style={{ marginLeft: "auto" }}>
+                <button
+                    className="btn"
+                    onClick={() => {
+                        fetchUsers();
+                        fetchLogs();
+                    }}
+                    style={{ marginLeft: "auto" }}
+                >
                     새로고침
                 </button>
             </div>
@@ -97,11 +137,21 @@ export default function Admin() {
                 <>
                     {/* 검색 폼 */}
                     <form
-                        onSubmit={(e) => { e.preventDefault(); fetchUsers(); }}
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            fetchUsers();
+                        }}
                         className="card"
                         style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}
                     >
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                alignItems: "center",
+                            }}
+                        >
                             <input
                                 placeholder="아이디 검색"
                                 value={uq}
@@ -114,17 +164,38 @@ export default function Admin() {
                                 <option value="admin">admin</option>
                             </select>
                             <label style={{ color: "var(--muted)" }}>가입일</label>
-                            <input type="date" value={ufrom} onChange={(e) => setUfrom(e.target.value)} />
+                            <input
+                                type="date"
+                                value={ufrom}
+                                onChange={(e) => setUfrom(e.target.value)}
+                            />
                             <span style={{ color: "var(--muted)" }}>~</span>
-                            <input type="date" value={uto} onChange={(e) => setUto(e.target.value)} />
-                            <button className="btn" type="submit">검색</button>
-                            <button type="button" className="btn" onClick={() => { setUq(""); setUrole(""); setUfrom(""); setUto(""); fetchUsers(); }} style={{ background: "#374151" }}>
+                            <input
+                                type="date"
+                                value={uto}
+                                onChange={(e) => setUto(e.target.value)}
+                            />
+                            <button className="btn" type="submit">
+                                검색
+                            </button>
+                            <button
+                                type="button"
+                                className="btn"
+                                onClick={() => {
+                                    setUq("");
+                                    setUrole("");
+                                    setUfrom("");
+                                    setUto("");
+                                    fetchUsers();
+                                }}
+                                style={{ background: "#374151" }}
+                            >
                                 초기화
                             </button>
                         </div>
                     </form>
 
-                    {/* 테이블 */}
+                    {/* 유저 테이블 */}
                     <div className="card" style={{ marginTop: 12, padding: 12 }}>
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
@@ -132,6 +203,7 @@ export default function Admin() {
                                     <th>아이디</th>
                                     <th>권한</th>
                                     <th>가입일</th>
+                                    <th>관리</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -140,10 +212,19 @@ export default function Admin() {
                                         <td>{u.username}</td>
                                         <td>{u.role}</td>
                                         <td>{new Date(u.createdAt).toLocaleString()}</td>
+                                        <td>
+                                            <button className="btn" onClick={() => handleDeleteUser(u)}>
+                                                강제탈퇴
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                                 {users.length === 0 && (
-                                    <tr><td colSpan={3} style={{ padding: 8, color: "var(--muted)" }}>유저가 없습니다.</td></tr>
+                                    <tr>
+                                        <td colSpan={4} style={{ padding: 8, color: "var(--muted)" }}>
+                                            유저가 없습니다.
+                                        </td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>
@@ -156,11 +237,21 @@ export default function Admin() {
                 <>
                     {/* 검색 폼 */}
                     <form
-                        onSubmit={(e) => { e.preventDefault(); fetchLogs(); }}
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            fetchLogs();
+                        }}
                         className="card"
                         style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}
                     >
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                alignItems: "center",
+                            }}
+                        >
                             <input
                                 placeholder="게임/결과/메모 검색"
                                 value={lq}
@@ -173,23 +264,49 @@ export default function Admin() {
                                 onChange={(e) => setLuser(e.target.value)}
                                 style={{ width: 180 }}
                             />
-                            <select value={lpub} onChange={(e) => setLpub(e.target.value)} style={{ width: 120 }}>
+                            <select
+                                value={lpub}
+                                onChange={(e) => setLpub(e.target.value)}
+                                style={{ width: 140 }}
+                            >
                                 <option value="">공개여부(전체)</option>
                                 <option value="true">공개</option>
-                                {/* <option value="false">비공개</option> */}
+                                <option value="false">비공개</option>
                             </select>
                             <label style={{ color: "var(--muted)" }}>날짜</label>
-                            <input type="date" value={lfrom} onChange={(e) => setLfrom(e.target.value)} />
+                            <input
+                                type="date"
+                                value={lfrom}
+                                onChange={(e) => setLfrom(e.target.value)}
+                            />
                             <span style={{ color: "var(--muted)" }}>~</span>
-                            <input type="date" value={lto} onChange={(e) => setLto(e.target.value)} />
-                            <button className="btn" type="submit">검색</button>
-                            <button type="button" className="btn" onClick={() => { setLq(""); setLuser(""); setLfrom(""); setLto(""); setLpub(""); fetchLogs(); }} style={{ background: "#374151" }}>
+                            <input
+                                type="date"
+                                value={lto}
+                                onChange={(e) => setLto(e.target.value)}
+                            />
+                            <button className="btn" type="submit">
+                                검색
+                            </button>
+                            <button
+                                type="button"
+                                className="btn"
+                                onClick={() => {
+                                    setLq("");
+                                    setLuser("");
+                                    setLfrom("");
+                                    setLto("");
+                                    setLpub("");
+                                    fetchLogs();
+                                }}
+                                style={{ background: "#374151" }}
+                            >
                                 초기화
                             </button>
                         </div>
                     </form>
 
-                    {/* 테이블 */}
+                    {/* 로그 테이블 */}
                     <div className="card" style={{ marginTop: 12, padding: 12 }}>
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
@@ -207,8 +324,8 @@ export default function Admin() {
                                 {logs.map((l) => {
                                     const authorName =
                                         l.userId && typeof l.userId === "object"
-                                            ? (l.userId.username || l.userId._id)
-                                            : (l.userId || "-");
+                                            ? l.userId.username || l.userId._id
+                                            : l.userId || "-";
 
                                     return (
                                         <tr key={l._id} style={{ borderTop: "1px solid var(--border)" }}>
@@ -218,18 +335,28 @@ export default function Admin() {
                                             <td>{l.isPublic ? "공개" : "비공개"}</td>
                                             <td>
                                                 {l.image?.url ? (
-                                                    <a href={l.image.url} target="_blank" rel="noreferrer">보기</a>
-                                                ) : "-"}
+                                                    <a href={l.image.url} target="_blank" rel="noreferrer">
+                                                        보기
+                                                    </a>
+                                                ) : (
+                                                    "-"
+                                                )}
                                             </td>
                                             <td>{authorName}</td>
                                             <td>
-                                                <button className="btn" onClick={() => handleDeleteLog(l._id)}>삭제</button>
+                                                <button className="btn" onClick={() => handleDeleteLog(l._id)}>
+                                                    삭제
+                                                </button>
                                             </td>
                                         </tr>
                                     );
                                 })}
                                 {logs.length === 0 && (
-                                    <tr><td colSpan={7} style={{ padding: 8, color: "var(--muted)" }}>로그가 없습니다.</td></tr>
+                                    <tr>
+                                        <td colSpan={7} style={{ padding: 8, color: "var(--muted)" }}>
+                                            로그가 없습니다.
+                                        </td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>
