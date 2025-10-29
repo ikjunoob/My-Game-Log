@@ -1,6 +1,6 @@
 // src/pages/Dashboard/index.jsx
 import { useEffect, useState } from "react";
-import { listLogs, deleteLog } from "../../api/logs";
+import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
@@ -8,12 +8,16 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
 
+    // 검색 폼 상태
+    const [q, setQ] = useState("");
+    const [from, setFrom] = useState("");
+    const [to, setTo] = useState("");
+
     const fetchLogs = async () => {
-        setErr("");
-        setLoading(true);
+        setErr(""); setLoading(true);
         try {
             const data = await listLogs();
-            setLogs([...data].reverse()); // 최신이 위로
+            setLogs([...data].reverse());
         } catch (e) {
             setErr(e?.response?.data?.message || "불러오기 실패");
         } finally {
@@ -29,6 +33,24 @@ export default function Dashboard() {
         setLogs((s) => s.filter((v) => v._id !== id));
     };
 
+    const onSearch = async (e) => {
+        e?.preventDefault?.();
+        setErr(""); setLoading(true);
+        try {
+            const result = await searchMyLogs({ q, from, to });
+            setLogs(result);
+        } catch (e) {
+            setErr(e?.response?.data?.message || "검색 실패");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onReset = async () => {
+        setQ(""); setFrom(""); setTo("");
+        await fetchLogs();
+    };
+
     if (loading) {
         return <div className="container" style={{ padding: "2rem" }}>로딩...</div>;
     }
@@ -38,7 +60,7 @@ export default function Dashboard() {
 
     return (
         <div className="container" style={{ padding: "2rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <h2>내 기록</h2>
                 <div style={{ display: "flex", gap: 8 }}>
                     <button className="btn" onClick={fetchLogs}>새로고침</button>
@@ -46,8 +68,31 @@ export default function Dashboard() {
                 </div>
             </div>
 
+            {/* ✅ 검색 폼 */}
+            <form onSubmit={onSearch} className="card" style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <input
+                        placeholder="게임명/결과/메모 검색"
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        style={{ flex: 1, minWidth: 220 }}
+                    />
+                    <label style={{ color: "var(--muted)" }}>날짜</label>
+                    <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                    <span style={{ color: "var(--muted)" }}>~</span>
+                    <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                    <button className="btn" type="submit">검색</button>
+                    <button type="button" className="btn" onClick={onReset} style={{ background: "#374151" }}>
+                        초기화
+                    </button>
+                </div>
+                <small style={{ color: "var(--muted)" }}>
+                    ※ 키워드는 게임명/결과/메모를 대상으로 부분 일치로 검색합니다. 날짜는 YYYY-MM-DD 범위를 사용합니다.
+                </small>
+            </form>
+
             {logs.length === 0 ? (
-                <p style={{ marginTop: "1rem" }}>기록이 없어요. “새 기록”을 눌러 추가해보세요.</p>
+                <p style={{ marginTop: "1rem" }}>조건에 맞는 기록이 없어요.</p>
             ) : (
                 <ul style={{ marginTop: "1rem", display: "grid", gap: "12px" }}>
                     {logs.map((l) => (
@@ -64,7 +109,12 @@ export default function Dashboard() {
                                     />
                                 )}
                                 <div style={{ flex: 1 }}>
-                                    <b>{l.game}</b> · <span>{l.date}</span> · <span>{l.result}</span>
+                                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                        <b>{l.game}</b> · <span>{l.date}</span> · <span>{l.result}</span>
+                                        <span style={{ marginLeft: 8, fontSize: 12, color: l.isPublic ? "#60a5fa" : "#98a2b3" }}>
+                                            {l.isPublic ? "공개" : "비공개"}
+                                        </span>
+                                    </div>
                                     {l.notes && <p style={{ marginTop: 4, color: "var(--muted)" }}>{l.notes}</p>}
                                 </div>
                                 <div style={{ display: "flex", gap: "8px" }}>

@@ -82,4 +82,34 @@ router.delete("/:id", protect, async (req, res) => {
     }
 });
 
+// ✅ 내 로그 검색
+// GET /api/logs/search?q=키워드&from=YYYY-MM-DD&to=YYYY-MM-DD
+router.get("/search", protect, async (req, res) => {
+    try {
+        const { q = "", from = "", to = "" } = req.query;
+
+        const filter = { userId: req.user.id };
+
+        // 키워드(게임명/결과/메모) — 부분일치(대소문자 무시)
+        if (q && String(q).trim()) {
+            const rex = new RegExp(String(q).trim(), "i");
+            filter.$or = [{ game: rex }, { result: rex }, { notes: rex }];
+            // 텍스트 인덱스를 적극 활용하려면 아래와 같이도 가능 (점수 정렬 등)
+            // filter.$text = { $search: String(q).trim() };
+        }
+
+        // 날짜 범위 필터 (문자열 ISO 비교)
+        if (from || to) {
+            filter.date = {};
+            if (from) filter.date.$gte = from;
+            if (to) filter.date.$lte = to;
+        }
+
+        const logs = await Log.find(filter).sort({ createdAt: -1 });
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 export default router;
