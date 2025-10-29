@@ -9,6 +9,7 @@ import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import storageRoutes from "./routes/storageRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js"; // ✅ 추가
 
 const app = express();
 
@@ -29,6 +30,7 @@ connectDB();
 app.use("/api/users", userRoutes);
 app.use("/api/logs", logRoutes);
 app.use("/api/storage", storageRoutes);
+app.use("/api/admin", adminRoutes); // ✅ 추가
 
 // ✅ 404
 app.use((_req, res) => res.status(404).json({ message: "Not Found" }));
