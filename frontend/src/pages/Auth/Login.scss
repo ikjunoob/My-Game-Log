@@ -1,0 +1,222 @@
+/* 로그인 전용 풀스크린 배경 + 오버레이 + 카드 UI */
+
+.login-page {
+    position: fixed;
+    inset: 0;
+    background: url('/images/login-bg.png') center / cover no-repeat;
+    /* ✅ png 고정 */
+}
+
+.login-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.65),
+            rgba(0, 0, 0, 0.55));
+}
+
+/* 콘텐츠 레이어: 중앙 정렬 (네온 + 카드 묶어서 가운데) */
+.login-layer {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    /* ✅ grid → flex */
+    flex-direction: column;
+    /* 세로 배치 */
+    align-items: center;
+    /* 가로 중앙 */
+    justify-content: center;
+    /* 세로 중앙 */
+    gap: clamp(12px, 3vw, 28px);
+    /* ✅ 두 요소 간 간격을 반응형으로 */
+    padding: 24px;
+}
+
+/* ───────────────────────────────────────────
+   네온사인 브랜드 (알록달록 그라데이션 + 네온 글로우)
+   ─────────────────────────────────────────── */
+.neon-brand {
+    margin: 0;
+    font-size: clamp(32px, 7vw, 72px);
+    font-weight: 900;
+    letter-spacing: .5px;
+
+    /* 무지개 그라데이션 텍스트 */
+    background: linear-gradient(90deg,
+            #ff2d75 0%,
+            #ffae00 20%,
+            #39ff14 40%,
+            #00e0ff 60%,
+            #b300ff 80%,
+            #ff2d75 100%);
+    background-size: 400% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+
+    /* 네온 글로우(부담 안가는 강도) */
+    filter:
+        drop-shadow(0 0 4px rgba(255, 255, 255, 0.35)) drop-shadow(0 0 14px rgba(255, 45, 117, 0.25));
+
+    /* 살짝 흐르는 애니메이션 + 아주 약한 깜빡임 */
+    animation: neon-gradient-move 8s linear infinite,
+        neon-flicker 3s infinite;
+    user-select: none;
+}
+
+@keyframes neon-gradient-move {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 400% 50%;
+    }
+}
+
+@keyframes neon-flicker {
+
+    0%,
+    19%,
+    22%,
+    62%,
+    64%,
+    70%,
+    100% {
+        opacity: 1;
+    }
+
+    20%,
+    63% {
+        opacity: .88;
+    }
+
+    21% {
+        opacity: .72;
+    }
+
+    65% {
+        opacity: .8;
+    }
+}
+
+/* 로그인 카드 */
+.login-box {
+    width: min(440px, 92vw);
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    padding: 22px 18px 18px;
+    color: #1f2937;
+    position: relative;
+    overflow: hidden;
+    /* ✅ 내부 요소 넘침 방지 */
+}
+
+.login-box::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    right: 56px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid rgba(255, 255, 255, 0.96);
+    filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.06));
+}
+
+.login-title {
+    margin: 0 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* 폼 레이아웃 */
+.login-form {
+    display: grid;
+    gap: 10px;
+}
+
+.login-form label {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+/* 입력 박스: 카드 밖 튐 방지 */
+.login-input {
+    width: 100%;
+    box-sizing: border-box;
+    /* 핵심 */
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    outline: none;
+    transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    color: #111827;
+}
+
+.login-input:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+    background: #fff;
+}
+
+.login-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+/* 오렌지 로그인 버튼 */
+.btn-login {
+    padding: .6rem 1.2rem;
+    border-radius: 999px;
+    border: 0;
+    background: #ff7a2e;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 6px 16px rgba(255, 122, 46, 0.35);
+    transition: transform .05s ease, filter .15s ease;
+}
+
+.btn-login:hover {
+    filter: brightness(1.05);
+}
+
+.btn-login:active {
+    transform: translateY(1px);
+}
+
+.btn-login:disabled {
+    opacity: .7;
+    cursor: not-allowed;
+}
+
+.login-meta {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.login-meta a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.login-error {
+    margin-top: 2px;
+    color: #dc2626;
+    font-size: 14px;
+}
+
+@media (max-width: 420px) {
+    .login-box {
+        padding: 18px 14px;
+    }
+}

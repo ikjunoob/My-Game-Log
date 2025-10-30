@@ -32,3 +32,63 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
+
+.btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: .6rem .8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #2e446b;
+  color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+
+.card>*+* {
+  margin-top: .6rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  padding: .6rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+tbody td {
+  padding: .6rem;
+  border-top: 1px solid var(--border);
+}
+
+tbody tr:hover {
+  background: rgba(0, 0, 0, .06);
+}
+
+.container {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.page {
+  padding-bottom: 48px;
+}
