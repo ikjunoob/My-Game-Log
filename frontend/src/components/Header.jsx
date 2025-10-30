@@ -11,7 +11,7 @@ export default function Header({ user, onLogout }) {
     return (
         <header style={{
             position: "sticky", top: 0, zIndex: 10,
-            background: "var(--card)", borderBottom: "1px solid var(--border)"
+            background: "var(--card)", borderBottom: "1px solid var(--border)", boxShadow: "var(--shadow)",
         }}>
             <div className="container" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
                 <Link to="/dashboard" style={{ fontWeight: 700 }}>나의 게임 기록</Link>
