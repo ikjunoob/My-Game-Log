@@ -1,3 +1,4 @@
+// src/constants.js
 export const GAME_OPTIONS = [
     "오버워치", "FC 온라인", "배틀필드6", "리그오브레전드", "에이펙스 레전드",
 ];
