@@ -11,6 +11,16 @@ export default function Create() {
     async function handleCreate(form) {
         setSubmitting(true);
         try {
+            // ✅ 이미지 검증(타입/2MB)
+            if (form.image) {
+                if (!/^image\//.test(form.image.type)) {
+                    throw new Error("이미지 파일만 업로드 가능합니다.");
+                }
+                if (form.image.size > 2 * 1024 * 1024) {
+                    throw new Error("이미지는 2MB 이하만 허용합니다.");
+                }
+            }
+
             let imageMeta = null;
 
             if (form.image) {
@@ -25,7 +35,7 @@ export default function Create() {
                 result: form.result,
                 notes: form.notes,
                 image: imageMeta,
-                isPublic: form.isPublic, // ✅ 폼 값 사용
+                isPublic: form.isPublic,
             });
 
             nav("/dashboard", { replace: true });

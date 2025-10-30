@@ -1,4 +1,3 @@
-// src/pages/Feed/index.jsx
 import { useEffect, useState } from "react";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
@@ -15,10 +14,13 @@ export default function Feed() {
     const [author, setAuthor] = useState("");
     const [sort, setSort] = useState("latest"); // latest|likes
 
+    const isAuthed = !!localStorage.getItem("token"); // ✅ 비로그인 시 좋아요 비활성화용
+
     async function fetchFeed() {
         setErr(""); setLoading(true);
         try {
             const data = await listPublicFeed({ game, mode, q, author, sort });
+            // 초기엔 liked 정보가 없으므로 그대로 렌더(첫 토글 시 응답으로 상태 반영)
             setLogs(Array.isArray(data) ? data : []);
         } catch (e) {
             setErr(e?.response?.data?.message || "피드를 불러오지 못했습니다.");
@@ -30,12 +32,18 @@ export default function Feed() {
     useEffect(() => { fetchFeed(); }, []);
 
     const onSearch = async (e) => { e.preventDefault(); fetchFeed(); };
-    const onReset = async () => { setGame(""); setMode("title_content"); setQ(""); setAuthor(""); setSort("latest"); fetchFeed(); };
+    const onReset = async () => {
+        setGame(""); setMode("title_content"); setQ(""); setAuthor(""); setSort("latest");
+        fetchFeed();
+    };
 
+    // ✅ 좋아요 버튼 상태/카운트 반영
     const onLike = async (id) => {
         try {
             const { liked, likes } = await toggleLike(id);
-            setLogs((s) => s.map((l) => (l._id === id ? { ...l, likes } : l)));
+            setLogs((s) =>
+                s.map((l) => (l._id === id ? { ...l, likes, _clientLiked: liked } : l))
+            );
         } catch (e) {
             alert(e?.response?.data?.message || "로그인이 필요합니다.");
         }
@@ -101,14 +109,17 @@ export default function Feed() {
                                 {l.notes && <p style={{ marginTop: 4, color: "var(--muted)" }}>{l.notes}</p>}
                             </div>
 
-                            {/* ❤️ 좋아요 */}
+                            {/* ❤️ 좋아요 (비로그인 비활성화 + 상태 토글 표시) */}
                             <button
                                 className="btn"
+                                disabled={!isAuthed}
                                 onClick={() => onLike(l._id)}
-                                title="좋아요"
+                                title={isAuthed ? "좋아요" : "로그인 필요"}
                                 style={{ display: "flex", alignItems: "center", gap: 6 }}
                             >
-                                <span style={{ fontSize: 18, lineHeight: 1 }}>♡</span>
+                                <span style={{ fontSize: 18, lineHeight: 1 }}>
+                                    {(l._clientLiked ?? false) ? "♥" : "♡"}
+                                </span>
                                 <span>{l.likes || 0}</span>
                             </button>
                         </div>

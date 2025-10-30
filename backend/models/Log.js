@@ -20,7 +20,7 @@ const logSchema = new mongoose.Schema(
         likes: { type: Number, default: 0, index: true },
         likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     },
-    { timestamps: true }
+    { timestamps: true } // ✅ createdAt/updatedAt 사용 보장
 );
 
 // 검색 인덱스

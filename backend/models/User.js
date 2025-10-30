@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
         password: { type: String, required: true },
         role: { type: String, enum: ["user", "admin"], default: "user" },
     },
-    { timestamps: true }
+    { timestamps: true } // ✅ createdAt/updatedAt 사용 보장
 );
 
 export default mongoose.model("User", userSchema);
