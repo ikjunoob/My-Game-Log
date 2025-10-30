@@ -1,3 +1,4 @@
+// src/api/storage.js
 import api from "./axios";
 
 // 1) 서버에서 presign URL 발급
