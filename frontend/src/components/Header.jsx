@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 export default function Header({ user, onLogout }) {
     const nav = useNavigate();
     const handleLogout = () => {
-        onLogout?.();
+        onLogout?.(); // ← App.jsx의 handleLogout 호출
         nav("/login", { replace: true });
     };
 

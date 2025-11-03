@@ -17,6 +17,7 @@ import Header from "./components/Header";
 import "./App.scss";
 
 export default function App() {
+  // 토큰/유저 상태
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [user, setUser] = useState(() => {
     const raw = localStorage.getItem("user");
@@ -25,13 +26,15 @@ export default function App() {
   const isAuthed = !!token;
   const location = useLocation();
 
+  // 로그인 성공 시 콜백(로그인 페이지에서 호출)
   const handleAuthed = ({ token, user }) => {
     setToken(token || null);
     setUser(user || null);
     if (token) localStorage.setItem("token", token); else localStorage.removeItem("token");
     if (user) localStorage.setItem("user", JSON.stringify(user)); else localStorage.removeItem("user");
   };
-
+  
+  // 로그아웃 동작(상태/스토리지 정리)
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -39,7 +42,7 @@ export default function App() {
     setUser(null);
   };
 
-  // 헤더를 숨길 페이지(랜딩/로그인/회원가입)
+  // 헤더를 숨길 페이지(랜딩/로그인/회원가입) // 로그인/회원가입/랜딩에서는 헤더 숨김
   const hideHeaderOn = new Set(["/", "/login", "/register"]);
   const showHeader = isAuthed && !hideHeaderOn.has(location.pathname);
 
@@ -47,6 +50,7 @@ export default function App() {
 
   return (
     <div className="page">
+      {/* ✅ 로그인되어 있고(=토큰 있음) 숨김 페이지가 아니면 헤더 렌더*/}
       {showHeader && <Header user={user} onLogout={handleLogout} />}
 
       <Routes>
