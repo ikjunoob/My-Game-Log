@@ -1,6 +1,219 @@
-/* src/pages/Landing/Landing.scss */
-.landing .landing-features {
-    margin-top: 2rem;
-    display: grid;
-    gap: 1rem;
+/* ───────────────────────────────────────────
+   Landing Page – Game/Neon/Glass theme
+   ─────────────────────────────────────────── */
+
+.landing {
+    position: relative;
+    min-height: 100dvh;
+    display: block;
+    padding: 24px 0;
+
+    /* 배경 + 어둡게 */
+    &::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+            linear-gradient(to bottom, rgba(0, 0, 0, .55), rgba(0, 0, 0, .65)),
+            url('/images/landing-bg.png') center / cover no-repeat;
+        background-image:
+            linear-gradient(to bottom, rgba(0, 0, 0, .55), rgba(0, 0, 0, .65)),
+            url('/images/landing-bg.png'), url('/images/login-bg.png');
+        z-index: 0;
+    }
+
+    .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* 히어로 카드: 글로벌 .card를 확실히 덮어쓰기 위해 .landing-hero.card로 지정 */
+    .landing-hero.card {
+        margin: 0 auto;
+        width: min(980px, 92%);
+
+        /* ↓↓↓ 글로벌 .card(background, border, shadow)보다 우선 적용되도록 !important */
+        background: linear-gradient(180deg, rgba(43, 41, 41, 0.7), rgba(44, 44, 44, 0.7)) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .25) !important;
+
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border-radius: var(--radius);
+    }
+
+    /* 제목: 알록달록 네온 그라데이션 */
+    .landing-hero h1 {
+        margin: 0 0 .5rem;
+        font-size: clamp(28px, 5.4vw, 44px);
+        font-weight: 900;
+        letter-spacing: .5px;
+
+        background: linear-gradient(90deg,
+                #ff2d75 0%,
+                #ffae00 20%,
+                #39ff14 40%,
+                #00e0ff 60%,
+                #b300ff 80%,
+                #ff2d75 100%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+
+        filter:
+            drop-shadow(0 0 6px rgba(255, 255, 255, .2)) drop-shadow(0 0 18px rgba(96, 165, 250, .18));
+        animation: landing-title-glow 10s linear infinite;
+    }
+
+    @keyframes landing-title-glow {
+        0% {
+            background-position: 0% 50%;
+        }
+
+        100% {
+            background-position: 300% 50%;
+        }
+    }
+
+    .landing-sub {
+        margin: .25rem 0 1rem;
+        color: #dbeafe;
+        opacity: .9;
+    }
+
+    /* === CTA 버튼 – 글로벌 .btn을 확실히 덮어쓰기 === */
+    .landing-hero .btn {
+        position: relative;
+        padding: .7rem 1.1rem;
+        border-radius: 999px;
+
+        /* ↓↓↓ 글로벌 .btn(background, border, shadow)을 이 설정으로 고정 */
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        color: #ffffff !important;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)),
+            linear-gradient(90deg, var(--accent), #8ab9ff) !important;
+        box-shadow:
+            0 8px 20px rgba(96, 165, 250, .35),
+            inset 0 0 0 0 rgba(255, 255, 255, .2) !important;
+
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        transition:
+            transform .08s ease,
+            filter .15s ease,
+            box-shadow .15s ease,
+            background-position .4s ease;
+        background-size: 200% 100%;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    .landing-hero .btn:hover {
+        transform: translateY(-1px);
+        background-position: 100% 0;
+        box-shadow:
+            0 10px 26px rgba(96, 165, 250, .48),
+            0 0 14px rgba(96, 165, 250, .35) !important;
+        filter: brightness(1.04);
+    }
+
+    .landing-hero .btn:active {
+        transform: translateY(0);
+        box-shadow:
+            0 6px 16px rgba(96, 165, 250, .32),
+            inset 0 2px 6px rgba(0, 0, 0, .25) !important;
+    }
+
+    .landing-hero .btn:focus-visible {
+        outline: 0;
+        box-shadow:
+            0 0 0 3px rgba(255, 255, 255, .35),
+            0 0 0 6px rgba(96, 165, 250, .45) !important;
+    }
+
+    .landing-hero .btn:disabled {
+        opacity: .65;
+        cursor: not-allowed;
+    }
+
+    /* 변형: 고스트 */
+    .landing-hero .btn.btn--ghost {
+        background: rgba(0, 0, 0, 0.06) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .25), inset 0 0 0 0 rgba(255, 255, 255, .2) !important;
+    }
+
+    .landing-hero .btn.btn--ghost:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        box-shadow:
+            0 10px 26px rgba(0, 0, 0, .35),
+            0 0 16px rgba(96, 165, 250, .35) !important;
+    }
+
+    /* 변형: 핑크 네온 */
+    .landing-hero .btn.btn--pink {
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)),
+            linear-gradient(90deg, #ff2d75, #ff7ab5) !important;
+        box-shadow: 0 8px 20px rgba(255, 45, 117, .38) !important;
+    }
+
+    .landing-hero .btn.btn--pink:hover {
+        box-shadow:
+            0 10px 26px rgba(255, 45, 117, .52),
+            0 0 14px rgba(255, 45, 117, .35) !important;
+    }
+
+    /* 기능 리스트 */
+    .landing-features {
+        margin: 2rem auto 0;
+        width: min(980px, 92%);
+        display: grid;
+        gap: 14px;
+    }
+
+    .landing-features li {
+        list-style: none;
+        padding: .8rem 1rem;
+        border-radius: 12px;
+        background: rgba(31, 31, 31, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .landing-features h2 {
+        margin: 0 0 .25rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #e5e7eb;
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+
+        &::before {
+            content: "";
+            width: .9rem;
+            height: .9rem;
+            border-radius: 999px;
+            background: radial-gradient(circle, var(--accent) 0%, rgba(128, 185, 255, 0.4) 70%);
+            box-shadow:
+                0 0 8px rgba(81, 200, 244, 0.8),
+                0 0 14px rgba(96, 165, 250, .35);
+            flex-shrink: 0;
+        }
+    }
+
+    .landing-features p {
+        margin: 0;
+        color: #cbd5e1;
+        opacity: .9;
+        font-size: 1.1rem;
+    }
+
+    @media (min-width: 680px) {
+        .landing-features {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+    }
 }
