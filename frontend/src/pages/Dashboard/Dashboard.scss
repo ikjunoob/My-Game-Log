@@ -1,0 +1,231 @@
+/* src/pages/Dashboard/Dashboard.scss */
+@use '../../styles/_tokens.scss' as *;
+/* ✅ @import -> @use as *; 로 수정 */
+
+.dashboard-page {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+
+    /* 1. 페이지 헤더 */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    .dashboard-title {
+        margin: 0;
+        font-size: 2.25rem;
+        font-weight: 900;
+        background-image: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 0 15px rgba(0, 224, 255, 0.3), 0 0 25px rgba(0, 255, 149, 0.2);
+    }
+
+    .dashboard-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    /* 2. 검색 폼 */
+    .search-form {
+        padding: 1.5rem;
+    }
+
+    .search-form__inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+
+        .search-input {
+            flex: 1 1 220px;
+        }
+
+        input[type="date"] {
+            flex: 1 1 150px;
+            min-width: 150px;
+        }
+
+        .btn--reset {
+            background: #4A5568;
+            color: var(--text-primary);
+            box-shadow: none;
+
+            &:hover {
+                background: #2D3748;
+                transform: translateY(-2px);
+            }
+        }
+    }
+
+    .search-hint {
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        padding-left: 0.25rem;
+    }
+
+    /* 3. 로그 목록 (UL) */
+    .log-list {
+        list-style: none;
+        display: grid;
+        gap: 1.25rem;
+    }
+
+    /* 4. 개별 로그 아이템 (LI) */
+    .log-item {
+        padding: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+        &:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), var(--shadow-inset);
+            border-image: linear-gradient(120deg, var(--accent-primary), var(--accent-success)) 1;
+        }
+    }
+
+    .log-item__inner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .log-item__image {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        flex-shrink: 0;
+        border: 1px solid var(--border-color);
+    }
+
+    .log-item__content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .log-item__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.75rem;
+
+        b {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        span {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.2rem 0.6rem;
+        border-radius: var(--radius-full);
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+
+        &.is-public {
+            color: var(--accent-success);
+            background: rgba(0, 255, 149, 0.1);
+            border: 1px solid rgba(0, 255, 149, 0.3);
+        }
+
+        &.is-private {
+            color: var(--text-secondary);
+            background: rgba(113, 128, 150, 0.2);
+            border: 1px solid rgba(113, 128, 150, 0.3);
+        }
+    }
+
+    .log-item__notes {
+        margin-top: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .log-item__actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* 5. "기록이 없을 때" (P) */
+    .empty-state {
+        margin-top: 1rem;
+        text-align: center;
+        padding: 3rem 2rem;
+        background: var(--card-bg);
+        border: 1px dashed var(--border-color);
+        border-radius: var(--radius-lg);
+        color: var(--text-secondary);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        font-size: 1.1rem;
+    }
+}
+
+/* * 반응형 웹 디자인 (모바일) */
+@media (max-width: 768px) {
+    .dashboard-page {
+        gap: 1rem;
+        padding-top: 1rem;
+
+        .dashboard-header {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+
+            .dashboard-actions {
+                justify-content: center;
+            }
+        }
+
+        .search-form .search-form__inner {
+            .btn {
+                flex-basis: 100%;
+                text-align: center;
+                justify-content: center;
+            }
+        }
+
+        .log-item__inner {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .log-item__image {
+            width: 100%;
+            height: 160px;
+        }
+
+        .log-item__content {
+            text-align: center;
+        }
+
+        .log-item__meta {
+            justify-content: center;
+        }
+
+        .log-item__actions {
+            margin-top: 1rem;
+            justify-content: center;
+        }
+    }
+}

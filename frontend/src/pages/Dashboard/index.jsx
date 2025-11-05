@@ -1,7 +1,7 @@
-// src/pages/Dashboard/index.jsx
 import { useEffect, useState, useRef } from "react";
 import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
 import { Link } from "react-router-dom";
+import "./Dashboard.scss"; // ✅ SCSS 파일 임포트
 
 export default function Dashboard() {
     const [logs, setLogs] = useState([]);
@@ -13,7 +13,6 @@ export default function Dashboard() {
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
 
-    // 👇 2. 두 개의 날짜 input을 가리킬 ref 생성
     const fromInputRef = useRef(null);
     const toInputRef = useRef(null);
 
@@ -55,7 +54,6 @@ export default function Dashboard() {
         await fetchLogs();
     };
 
-    // 👇 3. 각 input을 클릭할 때 캘린더를 여는 핸들러 함수 생성
     const handleFromDateClick = () => {
         if (fromInputRef.current?.showPicker) {
             fromInputRef.current.showPicker();
@@ -69,6 +67,7 @@ export default function Dashboard() {
     };
 
     if (loading) {
+        // 로딩 컴포넌트도 .container로 감싸서 일관성 유지
         return <div className="container" style={{ padding: "2rem" }}>로딩...</div>;
     }
     if (err) {
@@ -76,30 +75,30 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="container" style={{ padding: "2rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <h2>내 기록</h2>
-                <div style={{ display: "flex", gap: 8 }}>
+        // ✅ .container와 .dashboard-page 클래스 적용
+        <div className="container dashboard-page">
+            {/* ✅ 페이지 헤더 */}
+            <div className="dashboard-header">
+                <h2 className="dashboard-title">내 기록</h2>
+                <div className="dashboard-actions">
                     <button className="btn" onClick={fetchLogs}>새로고침</button>
                     <Link className="btn" to="/logs/new">새 기록</Link>
                 </div>
             </div>
 
-            {/* ✅ 검색 폼 */}
-            <form onSubmit={onSearch} className="card" style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {/* ✅ 검색 폼 (.card 유지 + .search-form 추가) */}
+            <form onSubmit={onSearch} className="card search-form">
+                <div className="search-form__inner">
                     <input
+                        className="search-input" // ✅ 클래스 적용
                         placeholder="게임명/결과/메모 검색"
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
-                        style={{ flex: 1, minWidth: 220 }}
                     />
                     <label style={{ color: "var(--muted)" }}>날짜</label>
-                    {/* 👇 4. 'from' 날짜 input에 ref와 onClick 추가 */}
                     <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} ref={fromInputRef}
                         onClick={handleFromDateClick} />
                     <span style={{ color: "var(--muted)" }}>~</span>
-                    {/* 👇 5. 'to' 날짜 input에 ref와 onClick 추가 */}
                     <input
                         type="date"
                         value={to}
@@ -108,42 +107,47 @@ export default function Dashboard() {
                         onClick={handleToDateClick}
                     />
                     <button className="btn" type="submit">검색</button>
-                    <button type="button" className="btn" onClick={onReset} style={{ background: "#374151" }}>
+                    {/* ✅ .btn--secondary 클래스 적용 */}
+                    <button type="button" className="btn btn--secondary" onClick={onReset}>
                         초기화
                     </button>
                 </div>
-                <small style={{ color: "var(--muted)" }}>
+                <small className="search-hint"> {/* ✅ 클래스 적용 */}
                     ※ 키워드는 게임명/결과/메모를 대상으로 부분 일치로 검색합니다. 날짜는 YYYY-MM-DD 범위를 사용합니다.
                 </small>
             </form>
 
             {logs.length === 0 ? (
-                <p style={{ marginTop: "1rem" }}>조건에 맞는 기록이 없어요.</p>
+                // ✅ .empty-state 클래스 적용
+                <p className="empty-state">조건에 맞는 기록이 없어요.</p>
             ) : (
-                <ul style={{ marginTop: "1rem", display: "grid", gap: "12px" }}>
+                // ✅ .log-list 클래스 적용
+                <ul className="log-list">
                     {logs.map((l) => (
-                        <li key={l._id} className="card" style={{ padding: "12px" }}>
-                            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        // ✅ .log-item 클래스 적용
+                        <li key={l._id} className="card log-item">
+                            <div className="log-item__inner">
                                 {l.image?.url && (
                                     <img
+                                        className="log-item__image" // ✅ 클래스 적용
                                         src={l.image.url}
                                         alt=""
-                                        width={72}
-                                        height={72}
-                                        style={{ objectFit: "cover", borderRadius: 8 }}
                                         onError={(e) => (e.currentTarget.style.display = "none")}
                                     />
                                 )}
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                        <b>{l.game}</b> · <span>{l.date}</span> · <span>{l.result}</span>
-                                        <span style={{ marginLeft: 8, fontSize: 12, color: l.isPublic ? "#60a5fa" : "#98a2b3" }}>
+                                <div className="log-item__content">
+                                    <div className="log-item__meta">
+                                        <b>{l.game}</b>
+                                        <span>{l.date}</span>
+                                        <span>{l.result}</span>
+                                        {/* ✅ 공개/비공개 배지 스타일 적용 */}
+                                        <span className={`status-badge ${l.isPublic ? "is-public" : "is-private"}`}>
                                             {l.isPublic ? "공개" : "비공개"}
                                         </span>
                                     </div>
-                                    {l.notes && <p style={{ marginTop: 4, color: "var(--muted)" }}>{l.notes}</p>}
+                                    {l.notes && <p className="log-item__notes">{l.notes}</p>}
                                 </div>
-                                <div style={{ display: "flex", gap: "8px" }}>
+                                <div className="log-item__actions">
                                     <Link className="btn" to={`/logs/${l._id}/edit`} state={{ log: l }}>수정</Link>
                                     <button className="btn" onClick={() => onDelete(l._id)}>삭제</button>
                                 </div>

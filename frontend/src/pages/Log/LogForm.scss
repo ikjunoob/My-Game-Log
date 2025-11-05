@@ -1,0 +1,99 @@
+@use '../../styles/_tokens.scss' as *;
+
+/* * 커스텀 체크박스 스타일 
+ * * <label class="checkbox-label">
+ * <input type="checkbox" />
+ * <span class="checkbox-box"></span>
+ * <span>라벨 텍스트</span>
+ * </label>
+ */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    /* 텍스트와 박스 사이 간격 */
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    user-select: none;
+    /* 텍스트 드래그 방지 */
+
+    /* 1. 기본 HTML 체크박스 숨기기 */
+    input[type="checkbox"] {
+        opacity: 0;
+        position: absolute;
+        width: 0;
+        height: 0;
+    }
+
+    /* 2. 커스텀 체크박스 박스 (Unchecked) */
+    .checkbox-box {
+        width: 20px;
+        height: 20px;
+        background: var(--card-bg-solid);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        position: relative;
+        transition: all 0.2s ease-out;
+
+        /* 체크마크 (기본 숨김) */
+        &::after {
+            content: "";
+            position: absolute;
+            display: none;
+
+            /* CSS로 그린 체크마크 */
+            left: 6px;
+            top: 2px;
+            width: 5px;
+            height: 10px;
+            border: solid var(--bg-color);
+            /* 박스 배경색과 대비되는 어두운색 */
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+    }
+
+    /* 3. 체크된 상태 (Checked) */
+    input[type="checkbox"]:checked+.checkbox-box {
+        background: var(--accent-primary);
+        /* 네온 시안 */
+        border-color: var(--accent-primary);
+    }
+
+    /* 체크됐을 때 체크마크 보여주기 */
+    input[type="checkbox"]:checked+.checkbox-box::after {
+        display: block;
+    }
+
+    /* 4. 접근성: 키보드 포커스 */
+    input[type="checkbox"]:focus-visible+.checkbox-box {
+        outline: none;
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(0, 224, 255, 0.3);
+    }
+
+    /* 호버 시 */
+    &:hover .checkbox-box {
+        border-color: var(--accent-primary);
+    }
+}
+
+/* 폼 전용 레이아웃 */
+.log-form-card {
+    padding: 1.5rem;
+    max-width: 580px;
+
+    /* 폼 내부 요소(label, input) 사이 간격 */
+    &>*+* {
+        margin-top: 1rem;
+    }
+
+    &>label:not(.checkbox-label) {
+        display: block;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: -0.5rem;
+        /* 라벨과 인풋 간격 줄이기 */
+    }
+}

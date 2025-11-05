@@ -21,11 +21,47 @@ export default function Feed() {
         const searchParams = params || { game, mode, q, author, sort };
 
         setErr(""); setLoading(true);
+
+        /*
+         * ✅ [수정] 1. 검색 직전에 '현재 좋아요 상태'를 Map으로 저장합니다.
+         * (setLogs의 함수형 업데이트를 사용해 'logs'의 최신 상태를 보장합니다.)
+         */
+        let likedStatusMap = new Map();
+        setLogs(currentLogs => {
+            currentLogs.forEach(log => {
+                if (log._clientLiked !== undefined) {
+                    likedStatusMap.set(log._id, log._clientLiked);
+                }
+            });
+            return currentLogs; // (state를 변경하지 않고 현재 상태만 읽음)
+        });
+
+
         try {
-            // API 호출 시 searchParams 변수를 사용
+            // 2. API 호출
             const data = await listPublicFeed(searchParams);
-            // 초기엔 liked 정보가 없으므로 그대로 렌더(첫 토글 시 응답으로 상태 반영)
-            setLogs(Array.isArray(data) ? data : []);
+
+            if (!Array.isArray(data)) {
+                setLogs([]); // 비정상 응답 처리
+                return;
+            }
+
+            /*
+             * ✅ [수정] 3. API에서 받은 새 데이터(data)에 저장해둔 '좋아요 상태'를 합칩니다.
+             */
+            const mergedLogs = data.map(newLog => {
+                const existingLikedStatus = likedStatusMap.get(newLog._id);
+
+                // 맵에 '좋아요' 기록이 있다면, 새 데이터에 _clientLiked 속성을 다시 추가합니다.
+                if (existingLikedStatus !== undefined) {
+                    return { ...newLog, _clientLiked: existingLikedStatus };
+                }
+                return newLog; // 기록이 없으면 새 데이터 그대로 사용
+            });
+
+            // 4. '좋아요' 상태가 합쳐진 새 배열로 state를 업데이트합니다.
+            setLogs(mergedLogs);
+
         } catch (e) {
             setErr(e?.response?.data?.message || "피드를 불러오지 못했습니다.");
         } finally {

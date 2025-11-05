@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
@@ -33,7 +32,7 @@ export default function App() {
     if (token) localStorage.setItem("token", token); else localStorage.removeItem("token");
     if (user) localStorage.setItem("user", JSON.stringify(user)); else localStorage.removeItem("user");
   };
-  
+
   // 로그아웃 동작(상태/스토리지 정리)
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -49,7 +48,18 @@ export default function App() {
   useEffect(() => { }, []);
 
   return (
-    <div className="page">
+    <>
+      {/* ✨ 1. 슬라이드 div를 7개로 늘립니다. */}
+      <div className="background-slideshow">
+        <div className="slide"></div>
+        <div className="slide"></div>
+        <div className="slide"></div>
+        <div className="slide"></div>
+        <div className="slide"></div>
+        <div className="slide"></div>
+        <div className="slide"></div>
+      </div>
+
       {/* ✅ 로그인되어 있고(=토큰 있음) 숨김 페이지가 아니면 헤더 렌더*/}
       {showHeader && <Header user={user} onLogout={handleLogout} />}
 
@@ -83,6 +93,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </div>
+    </>
   );
 }

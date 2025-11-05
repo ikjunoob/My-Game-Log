@@ -1,0 +1,97 @@
+/* src/components/Header.scss */
+@use '../styles/_tokens.scss' as *;
+
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.site-header__inner {
+    display: flex;
+    align-items: center;
+    /* ✅ gap과 padding 조정하여 로고와 전체 레이아웃 조화 */
+    gap: 1.5rem;
+    /* 로고와 네비게이션/유저 정보 사이 간격 증가 */
+    padding-top: 0.5rem;
+    /* 헤더 상하 패딩 조정 */
+    padding-bottom: 0.5rem;
+}
+
+.site-header__logo {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    /* 로고가 줄어들지 않도록 */
+
+    img {
+        /* ✅ 로고 이미지 높이 크게 조정 */
+        height: 70px;
+        /* 이전 36px -> 50px로 키움 (조절 가능) */
+        width: auto;
+        display: block;
+        transition: opacity 0.2s ease;
+    }
+
+    &:hover {
+        img {
+            opacity: 1;
+        }
+    }
+}
+
+.site-header__nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.site-header__user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    /* nav가 없을 경우를 대비 */
+
+    span {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .site-header__inner {
+        flex-wrap: wrap;
+    }
+
+    .site-header__logo {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .site-header__nav {
+        margin-left: 0;
+        flex-grow: 1;
+        justify-content: center;
+        /* 모바일에서 네비게이션 중앙 정렬 */
+    }
+
+    .site-header__user {
+        margin-left: 0;
+        flex-grow: 1;
+        justify-content: flex-end;
+    }
+
+    .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
