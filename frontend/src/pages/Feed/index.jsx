@@ -1,6 +1,66 @@
 import { useEffect, useState } from "react";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
+import "./Feed.scss"; // ✅ Feed 전용 SCSS
+
+// ✅ 페이지네이션을 위한 상수 (테스트용 2개)
+const ITEMS_PER_PAGE = 2;
+
+// ✅ 페이지네이션 컴포넌트 (Admin.jsx에서 복사)
+function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalItems === 0) return null; // 아이템이 없으면 숨김
+
+    const handlePageClick = (page) => {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        onPageChange(page);
+    };
+
+    const getPageNumbers = () => {
+        const pages = [];
+        const maxPagesToShow = 5;
+        const start = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        const end = Math.min(Math.max(1, totalPages), start + maxPagesToShow - 1);
+
+        if (start > 1) {
+            pages.push(1);
+            if (start > 2) pages.push('...');
+        }
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+        if (end < totalPages) {
+            if (end < totalPages - 1) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
+    return (
+        <nav className="pagination-controls">
+            <button onClick={() => handlePageClick(currentPage - 1)} disabled={currentPage === 1}>
+                이전
+            </button>
+            {getPageNumbers().map((page, index) =>
+                typeof page === 'number' ? (
+                    <button
+                        key={index}
+                        className={page === currentPage ? 'active' : ''}
+                        onClick={() => handlePageClick(page)}
+                    >
+                        {page}
+                    </button>
+                ) : (
+                    <span key={index} className="page-info">...</span>
+                )
+            )}
+            <button onClick={() => handlePageClick(currentPage + 1)} disabled={currentPage === totalPages}>
+                다음
+            </button>
+        </nav>
+    );
+}
+
 
 export default function Feed() {
     const [logs, setLogs] = useState([]);
@@ -8,59 +68,56 @@ export default function Feed() {
     const [err, setErr] = useState("");
 
     // 검색 상태
-    const [game, setGame] = useState(""); // ""=전체 or 게임명
-    const [mode, setMode] = useState("title_content"); // title|content|title_content
+    const [game, setGame] = useState("");
+    const [mode, setMode] = useState("title_content");
     const [q, setQ] = useState("");
     const [author, setAuthor] = useState("");
-    const [sort, setSort] = useState("latest"); // latest|likes
+    const [sort, setSort] = useState("latest");
 
-    const isAuthed = !!localStorage.getItem("token"); // ✅ 비로그인 시 좋아요 비활성화용
+    const [page, setPage] = useState(1);
+    const [totalLogs, setTotalLogs] = useState(0);
 
-    async function fetchFeed(params) {
-        // 파라미터가 있으면 그 값을, 없으면 현재 state 값을 사용
+    // ✅ [수정] 로컬 스토리지에서 'user' 객체와 'userId'를 가져옵니다.
+    const [user, setUser] = useState(() => {
+        const raw = localStorage.getItem("user");
+        return raw ? JSON.parse(raw) : null;
+    });
+    const userId = user?._id; // 현재 로그인한 유저의 ID
+    const isAuthed = !!localStorage.getItem("token");
+
+
+    async function fetchFeed(requestedPage = 1, params) {
         const searchParams = params || { game, mode, q, author, sort };
 
         setErr(""); setLoading(true);
 
-        /*
-         * ✅ [수정] 1. 검색 직전에 '현재 좋아요 상태'를 Map으로 저장합니다.
-         * (setLogs의 함수형 업데이트를 사용해 'logs'의 최신 상태를 보장합니다.)
-         */
-        let likedStatusMap = new Map();
-        setLogs(currentLogs => {
-            currentLogs.forEach(log => {
-                if (log._clientLiked !== undefined) {
-                    likedStatusMap.set(log._id, log._clientLiked);
-                }
-            });
-            return currentLogs; // (state를 변경하지 않고 현재 상태만 읽음)
-        });
-
+        // ✅ [수정] Map 로직(_clientLiked)을 모두 제거했습니다.
 
         try {
-            // 2. API 호출
-            const data = await listPublicFeed(searchParams);
+            const data = await listPublicFeed({
+                ...searchParams,
+                page: requestedPage,
+                size: ITEMS_PER_PAGE
+            });
 
-            if (!Array.isArray(data)) {
-                setLogs([]); // 비정상 응답 처리
+            if (!data || !Array.isArray(data.logs)) {
+                setLogs([]);
+                setTotalLogs(0);
                 return;
             }
 
-            /*
-             * ✅ [수정] 3. API에서 받은 새 데이터(data)에 저장해둔 '좋아요 상태'를 합칩니다.
-             */
-            const mergedLogs = data.map(newLog => {
-                const existingLikedStatus = likedStatusMap.get(newLog._id);
+            // ✅ [수정] API에서 받은 'likedBy' 배열과 'userId'를 비교합니다.
+            const mergedLogs = data.logs.map(newLog => {
+                // API 응답에 'likedBy' 배열이 있고, 그 배열에 'userId'가 포함되어 있는지 확인
+                const isLikedByMe = newLog.likedBy?.some(id => id === userId);
 
-                // 맵에 '좋아요' 기록이 있다면, 새 데이터에 _clientLiked 속성을 다시 추가합니다.
-                if (existingLikedStatus !== undefined) {
-                    return { ...newLog, _clientLiked: existingLikedStatus };
-                }
-                return newLog; // 기록이 없으면 새 데이터 그대로 사용
+                // 'liked' 라는 새 속성에 true/false를 저장합니다.
+                return { ...newLog, liked: isLikedByMe };
             });
 
-            // 4. '좋아요' 상태가 합쳐진 새 배열로 state를 업데이트합니다.
             setLogs(mergedLogs);
+            setTotalLogs(data.total || 0);
+            setPage(requestedPage);
 
         } catch (e) {
             setErr(e?.response?.data?.message || "피드를 불러오지 못했습니다.");
@@ -69,110 +126,110 @@ export default function Feed() {
         }
     }
 
-    useEffect(() => { fetchFeed(); }, []);
+    useEffect(() => { fetchFeed(1); }, []);
 
-    const onSearch = async (e) => { e.preventDefault(); fetchFeed(); };
+    const onSearch = async (e) => { e.preventDefault(); fetchFeed(1); };
 
     const onReset = async () => {
-        // 폼 UI를 초기화 (state 업데이트)
-        setGame("");
-        setMode("title_content");
-        setQ("");
-        setAuthor("");
-        setSort("latest");
-
-        // fetchFeed에 초기화된 값을 "직접" 전달
-        fetchFeed({
+        const resetParams = {
             game: "",
             mode: "title_content",
             q: "",
             author: "",
             sort: "latest",
-        });
+        };
+        setGame(resetParams.game);
+        setMode(resetParams.mode);
+        setQ(resetParams.q);
+        setAuthor(resetParams.author);
+        setSort(resetParams.sort);
+        fetchFeed(1, resetParams);
     };
 
-    // ✅ 좋아요 버튼 상태/카운트 반영
+    // ✅ [수정] onLike 함수가 '_clientLiked' 대신 'liked' 속성을 업데이트합니다.
     const onLike = async (id) => {
         try {
+            // API 응답 (liked: true/false, likes: 3)
             const { liked, likes } = await toggleLike(id);
             setLogs((s) =>
-                s.map((l) => (l._id === id ? { ...l, likes, _clientLiked: liked } : l))
+                // API가 보내준 'liked'와 'likes' 값으로 state를 덮어씁니다.
+                s.map((l) => (l._id === id ? { ...l, likes, liked } : l))
             );
         } catch (e) {
             alert(e?.response?.data?.message || "로그인이 필요합니다.");
         }
     };
 
-    if (loading) return <div className="container" style={{ padding: "2rem" }}>로딩...</div>;
+    if (loading) {
+        return <div className="container feed-page"><p className="empty-state">로딩...</p></div>;
+    }
 
     return (
-        <div className="container" style={{ padding: "2rem" }}>
-            <h2>공개 피드</h2>
+        <div className="container feed-page">
+            <header className="feed-header">
+                <h2 className="feed-title">공개 피드 ({totalLogs})</h2>
+            </header>
 
-            {/* 검색 폼 */}
-            <form onSubmit={onSearch} className="card" style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <select value={game} onChange={(e) => setGame(e.target.value)}>
+            <form onSubmit={onSearch} className="card admin-search-form">
+                <div className="admin-search-form__inner">
+                    <select className="search-select" value={game} onChange={(e) => setGame(e.target.value)}>
                         <option value="">전체 게임</option>
                         {GAME_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
                     </select>
-
-                    <select value={mode} onChange={(e) => setMode(e.target.value)}>
+                    <select className="search-select" value={mode} onChange={(e) => setMode(e.target.value)}>
                         <option value="title">제목(결과)</option>
                         <option value="content">내용(메모)</option>
                         <option value="title_content">제목+내용</option>
                     </select>
-
-                    <input placeholder="검색어" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-                    <input placeholder="작성자" value={author} onChange={(e) => setAuthor(e.target.value)} style={{ width: 160 }} />
-
-                    <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                    <input className="search-input" placeholder="검색어" value={q} onChange={(e) => setQ(e.target.value)} />
+                    <input className="search-input-user" placeholder="작성자" value={author} onChange={(e) => setAuthor(e.target.value)} />
+                    <select className="search-select" value={sort} onChange={(e) => setSort(e.target.value)}>
                         <option value="latest">최신순</option>
                         <option value="likes">좋아요순</option>
                     </select>
-
                     <button className="btn" type="submit">검색</button>
-                    <button type="button" className="btn" onClick={onReset} style={{ background: "#374151" }}>초기화</button>
+                    <button type="button" className="btn btn--reset" onClick={onReset}>초기화</button>
                 </div>
             </form>
 
-            {err && <p style={{ color: "var(--danger)" }}>{err}</p>}
-            {!err && logs.length === 0 && <p>조건에 맞는 공개 기록이 없습니다.</p>}
+            {err && <p style={{ color: "var(--accent-danger)" }}>{err}</p>}
 
-            <ul style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            <ul className="log-list">
                 {logs.map((l) => (
-                    <li key={l._id} className="card" style={{ padding: 12 }}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <li key={l._id} className="card log-item">
+                        <div className="log-item__inner">
                             {l.image?.url && (
                                 <img
+                                    className="log-item__image"
                                     src={l.image.url}
                                     alt=""
-                                    width={72}
-                                    height={72}
-                                    style={{ borderRadius: 8, objectFit: "cover" }}
                                     onError={(e) => (e.currentTarget.style.display = "none")}
                                 />
                             )}
-                            <div style={{ flex: 1 }}>
-                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                    <b>{l.game}</b> · <span>{l.date}</span> · <span>{l.result}</span>
+                            <div className="log-item__content">
+                                <div className="log-item__meta">
+                                    <b>{l.game}</b>
+                                    <span>{l.date}</span>
+                                    <span>{l.result}</span>
                                     {l.userId?.username && (
-                                        <span style={{ marginLeft: 8, fontSize: 12, color: "var(--muted)" }}>by {l.userId.username}</span>
+                                        <span style={{ color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                                            by {l.userId.username}
+                                        </span>
                                     )}
                                 </div>
-                                {l.notes && <p style={{ marginTop: 4, color: "var(--muted)" }}>{l.notes}</p>}
+                                {l.notes && <p className="log-item__notes">{l.notes}</p>}
                             </div>
 
-                            {/* ❤️ 좋아요 (비로그인 비활성화 + 상태 토글 표시) */}
+                            {/* ✅ [수정] '_clientLiked' 대신 'l.liked'를 사용합니다. */}
                             <button
-                                className="btn"
+                                className={`btn ${l.liked ? '' : 'btn--secondary'}`}
                                 disabled={!isAuthed}
                                 onClick={() => onLike(l._id)}
                                 title={isAuthed ? "좋아요" : "로그인 필요"}
-                                style={{ display: "flex", alignItems: "center", gap: 6 }}
+                                style={{ display: "flex", alignItems: "center", gap: 6, minWidth: '70px', justifyContent: 'center' }}
                             >
-                                <span style={{ fontSize: 18, lineHeight: 1 }}>
-                                    {(l._clientLiked ?? false) ? "♥" : "♡"}
+                                <span style={{ fontSize: 16, lineHeight: 1, color: l.liked ? 'var(--accent-danger)' : 'var(--accent-primary)' }}>
+                                    {(l.liked ?? false) ? "♥" : "♡"}
                                 </span>
                                 <span>{l.likes || 0}</span>
                             </button>
@@ -180,6 +237,15 @@ export default function Feed() {
                     </li>
                 ))}
             </ul>
+
+            {logs.length === 0 && !loading && <p className="empty-state">조건에 맞는 공개 기록이 없습니다.</p>}
+
+            <Pagination
+                currentPage={page}
+                totalItems={totalLogs}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={fetchFeed}
+            />
         </div>
     );
 }

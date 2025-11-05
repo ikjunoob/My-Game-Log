@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
-import "./Header.scss"; // ✅ 전용 SCSS 파일 임포트
+import { NavLink, useNavigate } from "react-router-dom"; // ✅ Link -> NavLink로 변경
+import "./Header.scss";
 
 export default function Header({ user, onLogout }) {
     const nav = useNavigate();
@@ -12,26 +12,34 @@ export default function Header({ user, onLogout }) {
     };
 
     return (
-        // ✅ BEM 클래스명 적용
         <header className="site-header">
             <div className="container site-header__inner">
 
-                {/* ✅ [수정] 텍스트 로고를 img 태그로 변경 */}
-                <Link to="/dashboard" className="site-header__logo">
+                <NavLink to="/dashboard" className="site-header__logo"> {/* ✅ 로고도 NavLink로 변경 */}
                     <img src="/images/logo.png" alt="My-GameLog 로고" />
-                </Link>
+                </NavLink>
 
+                {/* ✅ [수정] NavLink와 동적 className 적용 */}
                 <nav className="site-header__nav">
-                    <Link className="btn btn--secondary" to="/feed">
+                    <NavLink
+                        className={({ isActive }) => isActive ? "btn" : "btn btn--secondary"}
+                        to="/feed"
+                    >
                         공개피드
-                    </Link>
-                    <Link className="btn" to="/dashboard">
+                    </NavLink>
+                    <NavLink
+                        className={({ isActive }) => isActive ? "btn" : "btn btn--secondary"}
+                        to="/dashboard"
+                    >
                         나의 대시보드
-                    </Link>
+                    </NavLink>
                     {user?.role === "admin" && (
-                        <Link className="btn btn--secondary" to="/admin">
+                        <NavLink
+                            className={({ isActive }) => isActive ? "btn" : "btn btn--secondary"}
+                            to="/admin"
+                        >
                             관리자
-                        </Link>
+                        </NavLink>
                     )}
                 </nav>
 

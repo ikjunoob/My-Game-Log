@@ -1,0 +1,245 @@
+@use '../../styles/_tokens.scss' as *;
+
+/* * ========================================
+ * Feed 페이지 전용 스타일 
+ * (Admin.scss와 Dashboard.scss에서 가져옴)
+ * ========================================
+ */
+
+.feed-page {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0 0.5rem;
+}
+
+.feed-title {
+    margin: 0;
+    font-size: 2.25rem;
+    font-weight: 900;
+    background-image: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 15px rgba(0, 224, 255, 0.3), 0 0 25px rgba(0, 255, 149, 0.2);
+}
+
+/* * 검색 폼 (Admin.scss 재활용)
+ */
+.admin-search-form {
+    padding: 1.5rem;
+}
+
+.admin-search-form__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+
+    .search-input {
+        flex: 1 1 200px;
+    }
+
+    .search-input-user {
+        flex: 1 1 150px;
+    }
+
+    .search-select {
+        flex: 1 1 140px;
+        min-width: 140px;
+    }
+
+    .btn {
+        flex-shrink: 0;
+    }
+
+    .btn--reset {
+        background: #4A5568;
+        color: var(--text-primary);
+        box-shadow: none;
+
+        &:hover {
+            background: #2D3748;
+            transform: translateY(-2px);
+        }
+    }
+}
+
+/* * 로그 목록 (Dashboard.scss 재활용) 
+ */
+.log-list {
+    list-style: none;
+    display: grid;
+    gap: 1.25rem;
+}
+
+.log-item {
+    padding: 1.25rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), var(--shadow-inset);
+        border-image: linear-gradient(120deg, var(--accent-primary), var(--accent-success)) 1;
+    }
+}
+
+.log-item__inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* ✅ [수정] 이 부분이 깨진 이미지 크기를 되돌립니다. */
+.log-item__image {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.log-item__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.log-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+
+    b {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    span {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+}
+
+.log-item__notes {
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* "기록이 없을 때" */
+.empty-state {
+    margin-top: 1rem;
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--card-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 1.1rem;
+}
+
+/* * 페이지네이션 (Admin.scss 재활용) 
+ */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+
+    button {
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--border-color);
+        background: var(--card-bg-solid);
+        color: var(--text-secondary);
+        transition: all 0.2s ease;
+
+        &:hover {
+            background: var(--card-bg);
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        &.active {
+            background: var(--accent-primary);
+            color: #000;
+            border-color: var(--accent-primary);
+        }
+    }
+
+    .page-info {
+        color: var(--text-secondary);
+        margin: 0 0.5rem;
+    }
+}
+
+
+/* * 모바일 반응형 
+ */
+@media (max-width: 768px) {
+    .feed-page {
+        gap: 1rem;
+        padding-top: 1rem;
+    }
+
+    .feed-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    /* 검색 폼 */
+    .admin-search-form .admin-search-form__inner {
+        .btn {
+            flex-basis: 100%;
+            text-align: center;
+            justify-content: center;
+        }
+    }
+
+    /* 로그 아이템 */
+    .log-item__inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .log-item__image {
+        width: 100%;
+        height: 160px;
+        /* 모바일에선 크게 */
+    }
+
+    .log-item__content {
+        text-align: center;
+    }
+
+    .log-item__meta {
+        justify-content: center;
+    }
+}

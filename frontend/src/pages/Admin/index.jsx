@@ -1,4 +1,3 @@
-// src/pages/Admin/index.jsx
 import { useEffect, useState } from "react";
 import {
     adminSearchUsers,
@@ -6,6 +5,72 @@ import {
     adminDeleteLog,
     adminDeleteUser,
 } from "../../api/admin";
+import "./Admin.scss"; // ✅ SCSS 파일 임포트
+
+// ✅ 페이지네이션을 위한 상수
+const ITEMS_PER_PAGE = 2;
+
+// ✅ 페이지네이션 컴포넌트
+function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    // ✅ [수정] totalPages <= 1 일 때 숨기는 대신, totalItems가 0일 때만 숨깁니다.
+    if (totalItems === 0) return null;
+
+    const handlePageClick = (page) => {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        onPageChange(page);
+    };
+
+    // 페이지 번호 생성 로직 (예: ... 3 4 [5] 6 7 ...)
+    const getPageNumbers = () => {
+        const pages = [];
+        const maxPagesToShow = 5; // 주변에 몇 개의 페이지를 보여줄지
+        const start = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        // ✅ [수정] totalPages가 0이 되는 엣지 케이스 방지 (Math.max(1, ...))
+        const end = Math.min(Math.max(1, totalPages), start + maxPagesToShow - 1);
+
+        if (start > 1) {
+            pages.push(1);
+            if (start > 2) pages.push('...');
+        }
+
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (end < totalPages) {
+            if (end < totalPages - 1) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
+    return (
+        <nav className="pagination-controls">
+            <button onClick={() => handlePageClick(currentPage - 1)} disabled={currentPage === 1}>
+                이전
+            </button>
+            {getPageNumbers().map((page, index) =>
+                typeof page === 'number' ? (
+                    <button
+                        key={index}
+                        className={page === currentPage ? 'active' : ''}
+                        onClick={() => handlePageClick(page)}
+                    >
+                        {page}
+                    </button>
+                ) : (
+                    <span key={index} className="page-info">...</span>
+                )
+            )}
+            <button onClick={() => handlePageClick(currentPage + 1)} disabled={currentPage === totalPages}>
+                다음
+            </button>
+        </nav>
+    );
+}
+
 
 export default function Admin() {
     const [tab, setTab] = useState("users"); // "users" | "logs"
@@ -14,20 +79,41 @@ export default function Admin() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState("");
 
-    // ── Users search state
+    // --- Users state ---
     const [uq, setUq] = useState("");
-    const [urole, setUrole] = useState(""); // "", "user", "admin"
+    const [urole, setUrole] = useState("");
     const [ufrom, setUfrom] = useState("");
     const [uto, setUto] = useState("");
+    // ✅ 유저 페이지네이션 state
+    const [userPage, setUserPage] = useState(1);
+    const [userTotal, setUserTotal] = useState(0);
 
-    // ── Logs search state
-    const [lq, setLq] = useState(""); // game/result/notes
-    const [luser, setLuser] = useState(""); // username (작성자)
+    // --- Logs state ---
+    const [lq, setLq] = useState("");
+    const [luser, setLuser] = useState("");
     const [lfrom, setLfrom] = useState("");
     const [lto, setLto] = useState("");
-    const [lpub, setLpub] = useState(""); // "", "true", "false"
+    const [lpub, setLpub] = useState("");
+    // ✅ 로그 페이지네이션 state
+    const [logPage, setLogPage] = useState(1);
+    const [logTotal, setLogTotal] = useState(0);
 
-    async function fetchUsers() {
+    // ✅ 'Enter' 키 핸들러 (Select 태그용)
+    const handleUserSelectKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fetchUsers(1); // 엔터 시 1페이지부터 검색
+        }
+    };
+    const handleLogSelectKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fetchLogs(1); // 엔터 시 1페이지부터 검색
+        }
+    };
+
+    // ✅ [수정] fetchUsers (페이지네이션 적용)
+    async function fetchUsers(page = 1) {
         setLoading(true);
         setErr("");
         try {
@@ -36,8 +122,13 @@ export default function Admin() {
                 role: urole,
                 from: ufrom,
                 to: uto,
+                page: page, // ✅ 페이지 파라미터 전달
+                size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
-            setUsers(Array.isArray(data) ? data : []);
+            // ✅ 응답 데이터 구조에 맞게 수정
+            setUsers(Array.isArray(data.users) ? data.users : []);
+            setUserTotal(data.total || 0);
+            setUserPage(page);
         } catch (e) {
             setErr(e?.response?.data?.message || "유저 목록을 불러오지 못했습니다.");
         } finally {
@@ -45,7 +136,8 @@ export default function Admin() {
         }
     }
 
-    async function fetchLogs() {
+    // ✅ [수정] fetchLogs (페이지네이션 적용)
+    async function fetchLogs(page = 1) {
         setLoading(true);
         setErr("");
         try {
@@ -55,8 +147,13 @@ export default function Admin() {
                 from: lfrom,
                 to: lto,
                 isPublic: lpub,
+                page: page, // ✅ 페이지 파라미터 전달
+                size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
-            setLogs(Array.isArray(data) ? data : []);
+            // ✅ API가 { logs, total }을 반환한다고 가정
+            setLogs(Array.isArray(data.logs) ? data.logs : []);
+            setLogTotal(data.total || 0);
+            setLogPage(page);
         } catch (e) {
             setErr(e?.response?.data?.message || "로그 목록을 불러오지 못했습니다.");
         } finally {
@@ -64,9 +161,10 @@ export default function Admin() {
         }
     }
 
+    // ✅ [수정] 초기 로드 시 1페이지 호출
     useEffect(() => {
-        fetchUsers();
-        fetchLogs();
+        fetchUsers(1);
+        fetchLogs(1);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -74,8 +172,9 @@ export default function Admin() {
         if (!confirm("이 로그를 관리자 권한으로 삭제할까요? (이미지도 함께 제거됩니다)")) return;
         try {
             await adminDeleteLog(id);
-            setLogs((s) => s.filter((v) => v._id !== id));
             alert("삭제 완료");
+            // ✅ [수정] 삭제 후 현재 페이지 목록 다시 불러오기
+            fetchLogs(logPage);
         } catch (e) {
             alert(e?.response?.data?.message || "삭제 실패");
         }
@@ -91,46 +190,59 @@ export default function Admin() {
         try {
             await adminDeleteUser(u._id);
             alert("강제탈퇴 완료");
-            await Promise.all([fetchUsers(), fetchLogs()]);
+            // ✅ [수정] 삭제 후 현재 페이지 목록 + 전체 로그 다시 불러오기
+            await Promise.all([fetchUsers(userPage), fetchLogs(1)]); // 로그는 1페이지로
         } catch (e) {
             alert(e?.response?.data?.message || "강제탈퇴 실패");
         }
     };
 
+    // ✅ [수정] 탭 변경 시 1페이지부터 다시 로드
+    const handleTabChange = (newTab) => {
+        setTab(newTab);
+        if (newTab === 'users') {
+            fetchUsers(1);
+        } else {
+            fetchLogs(1);
+        }
+    };
+
+
     return (
-        <div className="container" style={{ padding: "2rem" }}>
-            <h2>관리자 페이지</h2>
+        <div className="container admin-page">
+            <header className="admin-header">
+                <h2 className="admin-title">관리자 페이지</h2>
+                <div className="admin-actions">
+                    <button
+                        className="btn btn--secondary" // '새로고침' 버튼 스타일 변경
+                        onClick={() => {
+                            if (tab === 'users') fetchUsers(userPage);
+                            else fetchLogs(logPage);
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </header>
 
             {/* 탭 */}
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <div className="admin-tabs">
                 <button
-                    className="btn"
-                    onClick={() => setTab("users")}
-                    style={{ opacity: tab === "users" ? 1 : 0.6 }}
+                    className={`btn ${tab !== 'users' ? 'btn--inactive' : ''}`}
+                    onClick={() => handleTabChange("users")}
                 >
-                    유저
+                    유저 ({userTotal})
                 </button>
                 <button
-                    className="btn"
-                    onClick={() => setTab("logs")}
-                    style={{ opacity: tab === "logs" ? 1 : 0.6 }}
+                    className={`btn ${tab !== 'logs' ? 'btn--inactive' : ''}`}
+                    onClick={() => handleTabChange("logs")}
                 >
-                    전체 로그
-                </button>
-                <button
-                    className="btn"
-                    onClick={() => {
-                        fetchUsers();
-                        fetchLogs();
-                    }}
-                    style={{ marginLeft: "auto" }}
-                >
-                    새로고침
+                    전체 로그 ({logTotal})
                 </button>
             </div>
 
             {loading && <p style={{ marginTop: 12 }}>로딩...</p>}
-            {err && <p style={{ marginTop: 12, color: "var(--danger)" }}>{err}</p>}
+            {err && <p style={{ marginTop: 12, color: "var(--accent-danger)" }}>{err}</p>}
 
             {/* ===================== 유저 탭 ===================== */}
             {tab === "users" && (
@@ -139,37 +251,34 @@ export default function Admin() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            fetchUsers();
+                            fetchUsers(1); // ✅ 검색 시 1페이지부터
                         }}
-                        className="card"
-                        style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}
+                        className="card admin-search-form"
                     >
-                        <div
-                            style={{
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                                alignItems: "center",
-                            }}
-                        >
+                        <div className="admin-search-form__inner">
                             <input
+                                className="search-input"
                                 placeholder="아이디 검색"
                                 value={uq}
                                 onChange={(e) => setUq(e.target.value)}
-                                style={{ flex: 1, minWidth: 220 }}
                             />
-                            <select value={urole} onChange={(e) => setUrole(e.target.value)}>
+                            <select
+                                className="search-select"
+                                value={urole}
+                                onChange={(e) => setUrole(e.target.value)}
+                                onKeyDown={handleUserSelectKeyDown} // ✅ 엔터 키 핸들러
+                            >
                                 <option value="">전체 권한</option>
                                 <option value="user">user</option>
                                 <option value="admin">admin</option>
                             </select>
-                            <label style={{ color: "var(--muted)" }}>가입일</label>
+                            <label>가입일</label>
                             <input
                                 type="date"
                                 value={ufrom}
                                 onChange={(e) => setUfrom(e.target.value)}
                             />
-                            <span style={{ color: "var(--muted)" }}>~</span>
+                            <span>~</span>
                             <input
                                 type="date"
                                 value={uto}
@@ -180,15 +289,14 @@ export default function Admin() {
                             </button>
                             <button
                                 type="button"
-                                className="btn"
+                                className="btn btn--reset" // ✅ 초기화 버튼 스타일
                                 onClick={() => {
                                     setUq("");
                                     setUrole("");
                                     setUfrom("");
                                     setUto("");
-                                    fetchUsers();
+                                    fetchUsers(1); // ✅ 초기화 시 1페이지부터
                                 }}
-                                style={{ background: "#374151" }}
                             >
                                 초기화
                             </button>
@@ -196,10 +304,10 @@ export default function Admin() {
                     </form>
 
                     {/* 유저 테이블 */}
-                    <div className="card" style={{ marginTop: 12, padding: 12 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <div className="card admin-table-card">
+                        <table className="admin-table users-table">
                             <thead>
-                                <tr style={{ textAlign: "left", color: "var(--muted)" }}>
+                                <tr>
                                     <th>아이디</th>
                                     <th>권한</th>
                                     <th>가입일</th>
@@ -208,12 +316,12 @@ export default function Admin() {
                             </thead>
                             <tbody>
                                 {users.map((u) => (
-                                    <tr key={u._id} style={{ borderTop: "1px solid var(--border)" }}>
+                                    <tr key={u._id}>
                                         <td>{u.username}</td>
                                         <td>{u.role}</td>
                                         <td>{new Date(u.createdAt).toLocaleString()}</td>
                                         <td>
-                                            <button className="btn" onClick={() => handleDeleteUser(u)}>
+                                            <button className="btn btn--danger btn--small" onClick={() => handleDeleteUser(u)}>
                                                 강제탈퇴
                                             </button>
                                         </td>
@@ -221,7 +329,7 @@ export default function Admin() {
                                 ))}
                                 {users.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} style={{ padding: 8, color: "var(--muted)" }}>
+                                        <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>
                                             유저가 없습니다.
                                         </td>
                                     </tr>
@@ -229,6 +337,13 @@ export default function Admin() {
                             </tbody>
                         </table>
                     </div>
+                    {/* ✅ 유저 페이지네이션 렌더링 */}
+                    <Pagination
+                        currentPage={userPage}
+                        totalItems={userTotal}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={fetchUsers}
+                    />
                 </>
             )}
 
@@ -239,47 +354,40 @@ export default function Admin() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            fetchLogs();
+                            fetchLogs(1); // ✅ 검색 시 1페이지부터
                         }}
-                        className="card"
-                        style={{ marginTop: 12, padding: 12, display: "grid", gap: 8 }}
+                        className="card admin-search-form"
                     >
-                        <div
-                            style={{
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                                alignItems: "center",
-                            }}
-                        >
+                        <div className="admin-search-form__inner">
                             <input
+                                className="search-input"
                                 placeholder="게임/결과/메모 검색"
                                 value={lq}
                                 onChange={(e) => setLq(e.target.value)}
-                                style={{ flex: 1, minWidth: 220 }}
                             />
                             <input
+                                className="search-input-user"
                                 placeholder="작성자(아이디)"
                                 value={luser}
                                 onChange={(e) => setLuser(e.target.value)}
-                                style={{ width: 180 }}
                             />
                             <select
+                                className="search-select"
                                 value={lpub}
                                 onChange={(e) => setLpub(e.target.value)}
-                                style={{ width: 140 }}
+                                onKeyDown={handleLogSelectKeyDown} // ✅ 엔터 키 핸들러
                             >
                                 <option value="">공개여부(전체)</option>
                                 <option value="true">공개</option>
                                 <option value="false">비공개</option>
                             </select>
-                            <label style={{ color: "var(--muted)" }}>날짜</label>
+                            <label>날짜</label>
                             <input
                                 type="date"
                                 value={lfrom}
                                 onChange={(e) => setLfrom(e.target.value)}
                             />
-                            <span style={{ color: "var(--muted)" }}>~</span>
+                            <span>~</span>
                             <input
                                 type="date"
                                 value={lto}
@@ -290,16 +398,15 @@ export default function Admin() {
                             </button>
                             <button
                                 type="button"
-                                className="btn"
+                                className="btn btn--reset" // ✅ 초기화 버튼 스타일
                                 onClick={() => {
                                     setLq("");
                                     setLuser("");
                                     setLfrom("");
                                     setLto("");
                                     setLpub("");
-                                    fetchLogs();
+                                    fetchLogs(1); // ✅ 초기화 시 1페이지부터
                                 }}
-                                style={{ background: "#374151" }}
                             >
                                 초기화
                             </button>
@@ -307,10 +414,10 @@ export default function Admin() {
                     </form>
 
                     {/* 로그 테이블 */}
-                    <div className="card" style={{ marginTop: 12, padding: 12 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <div className="card admin-table-card">
+                        <table className="admin-table logs-table">
                             <thead>
-                                <tr style={{ textAlign: "left", color: "var(--muted)" }}>
+                                <tr>
                                     <th>게임</th>
                                     <th>날짜</th>
                                     <th>결과</th>
@@ -328,7 +435,7 @@ export default function Admin() {
                                             : l.userId || "-";
 
                                     return (
-                                        <tr key={l._id} style={{ borderTop: "1px solid var(--border)" }}>
+                                        <tr key={l._id}>
                                             <td>{l.game}</td>
                                             <td>{l.date}</td>
                                             <td>{l.result}</td>
@@ -344,7 +451,7 @@ export default function Admin() {
                                             </td>
                                             <td>{authorName}</td>
                                             <td>
-                                                <button className="btn" onClick={() => handleDeleteLog(l._id)}>
+                                                <button className="btn btn--danger btn--small" onClick={() => handleDeleteLog(l._id)}>
                                                     삭제
                                                 </button>
                                             </td>
@@ -353,7 +460,7 @@ export default function Admin() {
                                 })}
                                 {logs.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} style={{ padding: 8, color: "var(--muted)" }}>
+                                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center' }}>
                                             로그가 없습니다.
                                         </td>
                                     </tr>
@@ -361,6 +468,13 @@ export default function Admin() {
                             </tbody>
                         </table>
                     </div>
+                    {/* ✅ 로그 페이지네이션 렌더링 */}
+                    <Pagination
+                        currentPage={logPage}
+                        totalItems={logTotal}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={fetchLogs}
+                    />
                 </>
             )}
         </div>
