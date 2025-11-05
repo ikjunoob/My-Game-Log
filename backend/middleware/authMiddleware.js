@@ -1,3 +1,4 @@
+// backend/middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 
 // ✅ 로그인 사용자만 접근
