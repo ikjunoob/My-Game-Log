@@ -29,6 +29,52 @@ router.get("/", protect, async (req, res) => {
     }
 });
 
+// ✅ 내 로그 검색 (Dashboard)
+// GET /api/logs/search?q=&from=&to=
+router.get("/search", protect, async (req, res) => {
+    try {
+        const { q, from, to } = req.query;
+        const userId = req.user.id;
+
+        // 1. 기본 필터: 로그인한 사용자 ID
+        const filter = { userId };
+
+        // 2. 키워드 필터 (q가 있으면)
+        if (q && q.trim()) {
+            const rex = new RegExp(q.trim(), "i");
+            // game, result, notes 필드 중 하나라도 일치하면
+            filter.$or = [
+                { game: rex },
+                { result: rex },
+                { notes: rex }
+            ];
+        }
+
+        // 3. 날짜 범위 필터 (from, to가 있으면)
+        const dateFilter = {};
+        if (from && from.trim()) {
+            dateFilter.$gte = from.trim(); // "from" 날짜보다 크거나 같음
+        }
+        if (to && to.trim()) {
+            dateFilter.$lte = to.trim(); // "to" 날짜보다 작거나 같음
+        }
+
+        // dateFilter 객체에 $gte나 $lte 키가 추가되었다면 filter에 반영
+        if (Object.keys(dateFilter).length > 0) {
+            filter.date = dateFilter;
+        }
+
+        // 4. DB 쿼리 실행 (최신순 정렬)
+        // 프론트에서 onSearch는 .reverse()가 없으므로 API에서 정렬
+        const logs = await Log.find(filter).sort({ createdAt: -1 });
+
+        res.json(logs);
+
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // ✅ 공개 피드 (검색 + 정렬 + 작성자명 포함)
 // GET /api/logs/public/feed?game=&mode=title|content|title_content&q=&author=&sort=latest|likes
 router.get("/public/feed", async (req, res) => {
