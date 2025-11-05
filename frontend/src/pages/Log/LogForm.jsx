@@ -1,5 +1,5 @@
 // src/pages/Log/LogForm.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { GAME_OPTIONS, RESULT_OPTIONS } from "../../constants";
 
 export default function LogForm({ initial, onSubmit, submitting }) {
@@ -11,6 +11,9 @@ export default function LogForm({ initial, onSubmit, submitting }) {
         image: null,
         isPublic: true,
     });
+
+    // 👇 1. 날짜 input을 가리킬 ref 생성
+    const dateInputRef = useRef(null);
 
     useEffect(() => {
         if (initial) {
@@ -29,6 +32,14 @@ export default function LogForm({ initial, onSubmit, submitting }) {
 
     const submit = (e) => { e.preventDefault(); onSubmit(form); };
 
+    // 👇 2. 날짜 input 클릭 시 캘린더를 강제로 여는 함수
+    const handleDateClick = () => {
+        // 브라우저가 showPicker()를 지원하는지 확인
+        if (dateInputRef.current?.showPicker) {
+            dateInputRef.current.showPicker();
+        }
+    };
+
     return (
         <form onSubmit={submit} className="card" style={{ padding: "1rem", maxWidth: 580 }}>
             <label>게임</label>
@@ -37,8 +48,15 @@ export default function LogForm({ initial, onSubmit, submitting }) {
             </select>
 
             <label>날짜</label>
-            <input name="date" value={form.date} onChange={change} placeholder="YYYY-MM-DD" required />
-
+            <input
+                type="date"
+                name="date"  /* 👈 이 속성을 추가하세요! */
+                value={form.date}
+                onChange={change}
+                required
+                ref={dateInputRef}
+                onClick={handleDateClick}
+            />
             <label>결과(제목/태그)</label>
             <select name="result" value={form.result} onChange={change}>
                 {RESULT_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}

@@ -1,3 +1,4 @@
+// src/pages/Log/Edit.jsx
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { listLogs, updateLog } from "../../api/logs";

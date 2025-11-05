@@ -6,6 +6,12 @@ export default function Header({ user, onLogout }) {
     const handleLogout = () => {
         onLogout?.(); // ← App.jsx의 handleLogout 호출
         nav("/login", { replace: true });
+        // 👇 이 if 문을 추가합니다.
+        if (window.confirm("로그아웃 하시겠습니까?")) {
+            onLogout?.(); // ← App.jsx의 handleLogout 호출
+            nav("/login", { replace: true });
+        }
+        // '취소'를 누르면 아무 일도 일어나지 않습니다.
     };
 
     return (

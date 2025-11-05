@@ -1,5 +1,5 @@
 // src/pages/Dashboard/index.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
 import { Link } from "react-router-dom";
 
@@ -12,6 +12,10 @@ export default function Dashboard() {
     const [q, setQ] = useState("");
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
+
+    // 👇 2. 두 개의 날짜 input을 가리킬 ref 생성
+    const fromInputRef = useRef(null);
+    const toInputRef = useRef(null);
 
     const fetchLogs = async () => {
         setErr(""); setLoading(true);
@@ -51,6 +55,19 @@ export default function Dashboard() {
         await fetchLogs();
     };
 
+    // 👇 3. 각 input을 클릭할 때 캘린더를 여는 핸들러 함수 생성
+    const handleFromDateClick = () => {
+        if (fromInputRef.current?.showPicker) {
+            fromInputRef.current.showPicker();
+        }
+    };
+
+    const handleToDateClick = () => {
+        if (toInputRef.current?.showPicker) {
+            toInputRef.current.showPicker();
+        }
+    };
+
     if (loading) {
         return <div className="container" style={{ padding: "2rem" }}>로딩...</div>;
     }
@@ -78,9 +95,18 @@ export default function Dashboard() {
                         style={{ flex: 1, minWidth: 220 }}
                     />
                     <label style={{ color: "var(--muted)" }}>날짜</label>
-                    <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                    {/* 👇 4. 'from' 날짜 input에 ref와 onClick 추가 */}
+                    <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} ref={fromInputRef}
+                        onClick={handleFromDateClick} />
                     <span style={{ color: "var(--muted)" }}>~</span>
-                    <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                    {/* 👇 5. 'to' 날짜 input에 ref와 onClick 추가 */}
+                    <input
+                        type="date"
+                        value={to}
+                        onChange={(e) => setTo(e.target.value)}
+                        ref={toInputRef}
+                        onClick={handleToDateClick}
+                    />
                     <button className="btn" type="submit">검색</button>
                     <button type="button" className="btn" onClick={onReset} style={{ background: "#374151" }}>
                         초기화

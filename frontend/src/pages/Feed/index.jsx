@@ -16,10 +16,14 @@ export default function Feed() {
 
     const isAuthed = !!localStorage.getItem("token"); // ✅ 비로그인 시 좋아요 비활성화용
 
-    async function fetchFeed() {
+    async function fetchFeed(params) {
+        // 파라미터가 있으면 그 값을, 없으면 현재 state 값을 사용
+        const searchParams = params || { game, mode, q, author, sort };
+
         setErr(""); setLoading(true);
         try {
-            const data = await listPublicFeed({ game, mode, q, author, sort });
+            // API 호출 시 searchParams 변수를 사용
+            const data = await listPublicFeed(searchParams);
             // 초기엔 liked 정보가 없으므로 그대로 렌더(첫 토글 시 응답으로 상태 반영)
             setLogs(Array.isArray(data) ? data : []);
         } catch (e) {
@@ -32,9 +36,23 @@ export default function Feed() {
     useEffect(() => { fetchFeed(); }, []);
 
     const onSearch = async (e) => { e.preventDefault(); fetchFeed(); };
+
     const onReset = async () => {
-        setGame(""); setMode("title_content"); setQ(""); setAuthor(""); setSort("latest");
-        fetchFeed();
+        // 폼 UI를 초기화 (state 업데이트)
+        setGame("");
+        setMode("title_content");
+        setQ("");
+        setAuthor("");
+        setSort("latest");
+
+        // fetchFeed에 초기화된 값을 "직접" 전달
+        fetchFeed({
+            game: "",
+            mode: "title_content",
+            q: "",
+            author: "",
+            sort: "latest",
+        });
     };
 
     // ✅ 좋아요 버튼 상태/카운트 반영
