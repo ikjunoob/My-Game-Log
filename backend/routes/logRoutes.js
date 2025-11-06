@@ -20,21 +20,30 @@ router.post("/", protect, async (req, res) => {
     }
 });
 
-// 내 로그
+// ✅ [수정] 내 로그 (페이지네이션 적용)
 router.get("/", protect, async (req, res) => {
     try {
-        const logs = await Log.find({ userId: req.user.id }).sort({ createdAt: -1 });
-        res.json(logs);
+        const { page = 1, size = ITEMS_PER_PAGE } = req.query;
+        const filter = { userId: req.user.id };
+
+        const total = await Log.countDocuments(filter);
+        const logs = await Log.find(filter)
+            .sort({ createdAt: -1 })
+            .skip((+page - 1) * +size)
+            .limit(+size);
+
+        res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
-// ✅ 내 로그 검색 (Dashboard)
+// ✅ [수정] 내 로그 검색 (페이지네이션 적용)
 router.get("/search", protect, async (req, res) => {
     try {
-        const { q, from, to } = req.query;
+        const { q, from, to, page = 1, size = ITEMS_PER_PAGE } = req.query;
         const userId = req.user.id;
+
         const filter = { userId };
         if (q && q.trim()) {
             const rex = new RegExp(q.trim(), "i");
@@ -54,8 +63,18 @@ router.get("/search", protect, async (req, res) => {
         if (Object.keys(dateFilter).length > 0) {
             filter.date = dateFilter;
         }
-        const logs = await Log.find(filter).sort({ createdAt: -1 });
-        res.json(logs);
+
+        // ✅ 1. 전체 개수 카운트
+        const total = await Log.countDocuments(filter);
+
+        // ✅ 2. 페이지에 맞는 데이터 검색
+        const logs = await Log.find(filter)
+            .sort({ createdAt: -1 })
+            .skip((+page - 1) * +size)
+            .limit(+size);
+
+        res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
+
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
