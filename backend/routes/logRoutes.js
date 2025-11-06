@@ -28,11 +28,13 @@ router.get("/", protect, async (req, res) => {
 
         const total = await Log.countDocuments(filter);
         const logs = await Log.find(filter)
-            .sort({ createdAt: -1 })
+            .sort({ createdAt: -1 }) // 최신순 정렬
             .skip((+page - 1) * +size)
             .limit(+size);
 
-        res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
+        // ✅ { logs, total } 객체로 응답
+        // ✅ .reverse()는 프론트엔드에서 처리하도록 원본 순서(최신순)대로 보냅니다.
+        res.json({ logs, total });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -64,10 +66,7 @@ router.get("/search", protect, async (req, res) => {
             filter.date = dateFilter;
         }
 
-        // ✅ 1. 전체 개수 카운트
         const total = await Log.countDocuments(filter);
-
-        // ✅ 2. 페이지에 맞는 데이터 검색
         const logs = await Log.find(filter)
             .sort({ createdAt: -1 })
             .skip((+page - 1) * +size)
@@ -80,12 +79,9 @@ router.get("/search", protect, async (req, res) => {
     }
 });
 
-/** =========================
- * ✅ 공개 피드 (페이지네이션 적용)
- * ========================= */
+// ✅ 공개 피드 (페이지네이션 적용 - 이전 단계에서 수정됨)
 router.get("/public/feed", async (req, res) => {
     try {
-        // ✅ [수정] page, size 파라미터 받기 (기본값 2개)
         const {
             game = "",
             mode = "",
@@ -93,49 +89,44 @@ router.get("/public/feed", async (req, res) => {
             author = "",
             sort = "latest",
             page = 1,
-            size = ITEMS_PER_PAGE
+            size = ITEMS_PER_PAGE // (2개)
         } = req.query;
 
         const pipeline = [
             { $match: { isPublic: true } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",
-                    foreignField: "_id",
-                    as: "user",
-                },
-            },
+            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
             { $unwind: "$user" },
         ];
-
         const and = [];
 
-        if (game && game.trim()) {
-            and.push({ game: game.trim() });
-        }
+        if (game && game.trim()) and.push({ game: game.trim() });
         if (q && q.trim()) {
             const rex = new RegExp(q.trim(), "i");
             if (mode === "title") and.push({ result: rex });
             else if (mode === "content") and.push({ notes: rex });
             else if (mode === "title_content") and.push({ $or: [{ result: rex }, { notes: rex }] });
-            else {
-                and.push({ $or: [{ game: rex }, { result: rex }, { notes: rex }] });
-            }
+            else and.push({ $or: [{ game: rex }, { result: rex }, { notes: rex }] });
         }
         if (author && author.trim()) {
             const rex = new RegExp(author.trim(), "i");
             and.push({ "user.username": rex });
         }
+        if (from || to) {
+            const cond = {};
+            if (from) cond.$gte = from;
+            if (to) cond.$lte = to;
+            and.push({ date: cond });
+        }
+        if (typeof isPublic !== "undefined" && isPublic !== "") {
+            and.push({ isPublic: isPublic === "true" });
+        }
 
         if (and.length) pipeline.push({ $match: { $and: and } });
 
-        // ✅ [수정] 1. 전체 개수 카운트
         const countPipeline = [...pipeline, { $count: "total" }];
         const totalResult = await Log.aggregate(countPipeline);
         const total = totalResult[0]?.total || 0;
 
-        // ✅ [수정] 2. 정렬 및 페이지네이션 적용 (기존 $limit: 200 제거)
         if (sort === "likes") pipeline.push({ $sort: { likes: -1, createdAt: -1 } });
         else pipeline.push({ $sort: { createdAt: -1 } });
 
@@ -143,11 +134,8 @@ router.get("/public/feed", async (req, res) => {
         pipeline.push({ $limit: +size });
 
         const rows = await Log.aggregate(pipeline);
-
-        // 프론트 호환: userId에 user 객체 실어주기
         const shapedLogs = rows.map((r) => ({ ...r, userId: r.user }));
 
-        // ✅ [수정] 3. { logs, total } 객체로 응답
         res.json({ logs: shapedLogs, total: total });
 
     } catch (err) {
@@ -191,7 +179,7 @@ router.delete("/:id", protect, async (req, res) => {
     }
 });
 
-// ✅ 좋아요 토글
+// 좋아요 토글
 router.post("/:id/like", protect, async (req, res) => {
     try {
         const log = await Log.findById(req.params.id);
