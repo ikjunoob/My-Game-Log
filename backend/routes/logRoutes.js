@@ -1,10 +1,11 @@
+// backend/routes/logRoutes.js
 import express from "express";
 import Log from "../models/Log.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { deleteS3Object } from "../src/s3.js";
 
 const router = express.Router();
-// ✅ [수정] 테스트를 위해 페이지당 2개로 설정
+// ✅ 테스트를 위해 페이지당 2개로 설정
 const ITEMS_PER_PAGE = 2;
 
 // 생성
@@ -32,9 +33,7 @@ router.get("/", protect, async (req, res) => {
             .skip((+page - 1) * +size)
             .limit(+size);
 
-        // ✅ { logs, total } 객체로 응답
-        // ✅ .reverse()는 프론트엔드에서 처리하도록 원본 순서(최신순)대로 보냅니다.
-        res.json({ logs, total });
+        res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -79,7 +78,9 @@ router.get("/search", protect, async (req, res) => {
     }
 });
 
-// ✅ 공개 피드 (페이지네이션 적용 - 이전 단계에서 수정됨)
+/** =========================
+ * ✅ 공개 피드 (페이지네이션 $facet으로 수정)
+ * ========================= */
 router.get("/public/feed", async (req, res) => {
     try {
         const {
@@ -88,18 +89,34 @@ router.get("/public/feed", async (req, res) => {
             q = "",
             author = "",
             sort = "latest",
+            from = "",
+            to = "",
+            isPublic = "",
             page = 1,
-            size = ITEMS_PER_PAGE // (2개)
+            size = ITEMS_PER_PAGE,
         } = req.query;
 
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const sizeNum = Math.max(1, parseInt(size, 10) || ITEMS_PER_PAGE);
+
+        // 1) 기본 필터링 파이프라인
         const pipeline = [
             { $match: { isPublic: true } },
-            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
-            { $unwind: "$user" },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
         ];
+
         const and = [];
 
         if (game && game.trim()) and.push({ game: game.trim() });
+
         if (q && q.trim()) {
             const rex = new RegExp(q.trim(), "i");
             if (mode === "title") and.push({ result: rex });
@@ -107,38 +124,55 @@ router.get("/public/feed", async (req, res) => {
             else if (mode === "title_content") and.push({ $or: [{ result: rex }, { notes: rex }] });
             else and.push({ $or: [{ game: rex }, { result: rex }, { notes: rex }] });
         }
+
         if (author && author.trim()) {
             const rex = new RegExp(author.trim(), "i");
             and.push({ "user.username": rex });
         }
+
         if (from || to) {
             const cond = {};
-            if (from) cond.$gte = from;
-            if (to) cond.$lte = to;
+            if (from && from.trim()) cond.$gte = from.trim();
+            if (to && to.trim()) cond.$lte = to.trim();
             and.push({ date: cond });
         }
-        if (typeof isPublic !== "undefined" && isPublic !== "") {
-            and.push({ isPublic: isPublic === "true" });
+
+        // 쿼리로 false를 명시했을 때만 false 조건 추가 (기본은 true)
+        if (String(isPublic).length && String(isPublic).toLowerCase() === "false") {
+            and.push({ isPublic: false });
         }
 
         if (and.length) pipeline.push({ $match: { $and: and } });
 
-        const countPipeline = [...pipeline, { $count: "total" }];
-        const totalResult = await Log.aggregate(countPipeline);
-        const total = totalResult[0]?.total || 0;
+        const sortStage = (sort === "likes")
+            ? { $sort: { likes: -1, createdAt: -1 } }
+            : { $sort: { createdAt: -1 } };
 
-        if (sort === "likes") pipeline.push({ $sort: { likes: -1, createdAt: -1 } });
-        else pipeline.push({ $sort: { createdAt: -1 } });
+        const facetPipeline = [
+            ...pipeline,
+            {
+                $facet: {
+                    total: [{ $count: "count" }],
+                    pageData: [
+                        sortStage,
+                        { $skip: (pageNum - 1) * sizeNum },
+                        { $limit: sizeNum },
+                    ],
+                },
+            },
+        ];
 
-        pipeline.push({ $skip: (+page - 1) * +size });
-        pipeline.push({ $limit: +size });
+        const results = await Log.aggregate(facetPipeline);
 
-        const rows = await Log.aggregate(pipeline);
-        const shapedLogs = rows.map((r) => ({ ...r, userId: r.user }));
+        const logsData = results[0]?.pageData || [];
+        const total = results[0]?.total?.[0]?.count || 0;
 
-        res.json({ logs: shapedLogs, total: total });
+        // 프론트 호환: userId에 user 객체 실어주기
+        const shapedLogs = logsData.map((r) => ({ ...r, userId: r.user }));
 
+        res.json({ logs: shapedLogs, total });
     } catch (err) {
+        console.error("GET /api/logs/public/feed 오류:", err);
         res.status(500).json({ message: err.message });
     }
 });

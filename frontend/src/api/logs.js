@@ -1,3 +1,4 @@
+// frontend/src/logs.js
 import api from "./axios";
 
 // ✅ [수정] params 객체를 받도록 변경
