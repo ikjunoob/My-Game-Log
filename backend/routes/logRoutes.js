@@ -13,7 +13,13 @@ router.post("/", protect, async (req, res) => {
     try {
         const { game, date, result, notes, image, isPublic = true } = req.body;
         const doc = await Log.create({
-            userId: req.user.id, game, date, result, notes, image: image || null, isPublic,
+            userId: req.user.id,
+            game,
+            date,
+            result,
+            notes,
+            image: image || null,
+            isPublic,
         });
         res.status(201).json(doc);
     } catch (err) {
@@ -48,11 +54,7 @@ router.get("/search", protect, async (req, res) => {
         const filter = { userId };
         if (q && q.trim()) {
             const rex = new RegExp(q.trim(), "i");
-            filter.$or = [
-                { game: rex },
-                { result: rex },
-                { notes: rex }
-            ];
+            filter.$or = [{ game: rex }, { result: rex }, { notes: rex }];
         }
         const dateFilter = {};
         if (from && from.trim()) {
@@ -72,7 +74,6 @@ router.get("/search", protect, async (req, res) => {
             .limit(+size);
 
         res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
-
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -111,6 +112,9 @@ router.get("/public/feed", async (req, res) => {
                 },
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
+            // 🔒 민감 필드 제거 (여기에서 바로 정리)
+            { $unset: ["user.password", "user.__v", "user.createdAt", "user.updatedAt"] },
         ];
 
         const and = [];
@@ -144,20 +148,15 @@ router.get("/public/feed", async (req, res) => {
 
         if (and.length) pipeline.push({ $match: { $and: and } });
 
-        const sortStage = (sort === "likes")
-            ? { $sort: { likes: -1, createdAt: -1 } }
-            : { $sort: { createdAt: -1 } };
+        const sortStage =
+            sort === "likes" ? { $sort: { likes: -1, createdAt: -1 } } : { $sort: { createdAt: -1 } };
 
         const facetPipeline = [
             ...pipeline,
             {
                 $facet: {
                     total: [{ $count: "count" }],
-                    pageData: [
-                        sortStage,
-                        { $skip: (pageNum - 1) * sizeNum },
-                        { $limit: sizeNum },
-                    ],
+                    pageData: [sortStage, { $skip: (pageNum - 1) * sizeNum }, { $limit: sizeNum }],
                 },
             },
         ];
@@ -182,18 +181,24 @@ router.patch("/:id", protect, async (req, res) => {
     try {
         const allow = ["game", "date", "result", "notes", "image", "isPublic"];
         const fields = {};
-        allow.forEach((k) => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
+        allow.forEach((k) => {
+            if (req.body[k] !== undefined) fields[k] = req.body[k];
+        });
 
         const prev = await Log.findOne({ _id: req.params.id, userId: req.user.id });
         if (!prev) return res.status(404).json({ message: "없거나 권한 없음" });
 
         const newKey = req.body?.image?.key;
         if (newKey && prev?.image?.key && prev.image.key !== newKey) {
-            try { await deleteS3Object(prev.image.key); } catch { }
+            try {
+                await deleteS3Object(prev.image.key);
+            } catch { }
         }
 
         const updated = await Log.findOneAndUpdate(
-            { _id: req.params.id, userId: req.user.id }, fields, { new: true }
+            { _id: req.params.id, userId: req.user.id },
+            fields,
+            { new: true }
         );
         res.json(updated);
     } catch (err) {
@@ -206,7 +211,11 @@ router.delete("/:id", protect, async (req, res) => {
     try {
         const doc = await Log.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
         if (!doc) return res.status(404).json({ message: "없거나 권한 없음" });
-        if (doc.image?.key) { try { await deleteS3Object(doc.image.key); } catch { } }
+        if (doc.image?.key) {
+            try {
+                await deleteS3Object(doc.image.key);
+            } catch { }
+        }
         res.json({ message: "삭제됨" });
     } catch (err) {
         res.status(500).json({ message: err.message });
