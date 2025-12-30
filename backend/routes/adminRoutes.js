@@ -5,6 +5,8 @@ import Log from "../models/Log.js";
 // 'adminOnly' 미들웨어 이름은 실제 파일에 맞게 확인해주세요.
 import { protect, adminOnly } from "../middleware/authMiddleware.js";
 import { deleteS3Object } from "../src/s3.js";
+import { recordDeletion } from "../utils/audit.js";
+import { isValidDateString, normalizePagination, trimString } from "../utils/validation.js";
 
 const router = express.Router();
 const ITEMS_PER_PAGE = 2; // 테스트용 2개
@@ -17,27 +19,44 @@ router.get("/users", protect, adminOnly, async (req, res) => {
         // ✅ [디버깅] 1. 프론트엔드에서 보낸 쿼리 파라미터 전체를 터미널에 출력
         console.log("GET /api/admin/users 쿼리:", req.query);
 
-        const { q = "", role = "", from = "", to = "", page = 1, size = ITEMS_PER_PAGE } = req.query;
+        const q = trimString(req.query.q, 50);
+        const role = trimString(req.query.role, 10);
+        const from = trimString(req.query.from, 10);
+        const to = trimString(req.query.to, 10);
+        const { page, size } = normalizePagination(req.query.page, req.query.size, {
+            defaultSize: ITEMS_PER_PAGE,
+            maxSize: 50,
+        });
         const filter = {};
 
-        if (q && q.trim()) {
-            filter.username = new RegExp(q.trim(), "i");
+        if (q) {
+            filter.username = new RegExp(q, "i");
         }
         if (role && (role === "user" || role === "admin")) {
             filter.role = role;
         }
         if (from || to) {
             filter.createdAt = {};
-            if (from) filter.createdAt.$gte = new Date(`${from}T00:00:00.000Z`);
-            if (to) filter.createdAt.$lte = new Date(`${to}T23:59:59.999Z`);
+            if (from) {
+                if (!isValidDateString(from)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                filter.createdAt.$gte = new Date(`${from}T00:00:00.000Z`);
+            }
+            if (to) {
+                if (!isValidDateString(to)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                filter.createdAt.$lte = new Date(`${to}T23:59:59.999Z`);
+            }
         }
 
         const total = await User.countDocuments(filter);
         const users = await User.find(filter)
             .select("-password")
             .sort({ createdAt: -1 })
-            .skip((+page - 1) * +size)
-            .limit(+size);
+            .skip((page - 1) * size)
+            .limit(size);
 
         res.json({ users, total });
 
@@ -55,7 +74,15 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
         // ✅ [디버깅] 1. 프론트엔드에서 보낸 쿼리 파라미터 전체를 터미널에 출력
         console.log("GET /api/admin/logs 쿼리:", req.query);
 
-        const { q = "", user = "", from = "", to = "", isPublic, page = 1, size = ITEMS_PER_PAGE } = req.query;
+        const q = trimString(req.query.q, 100);
+        const user = trimString(req.query.user, 50);
+        const from = trimString(req.query.from, 10);
+        const to = trimString(req.query.to, 10);
+        const isPublic = req.query.isPublic;
+        const { page, size } = normalizePagination(req.query.page, req.query.size, {
+            defaultSize: ITEMS_PER_PAGE,
+            maxSize: 50,
+        });
 
         const pipeline = [
             { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
@@ -63,18 +90,28 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
         ];
         const and = [];
 
-        if (q && q.trim()) {
-            const rex = new RegExp(q.trim(), "i");
+        if (q) {
+            const rex = new RegExp(q, "i");
             and.push({ $or: [{ game: rex }, { result: rex }, { notes: rex }] });
         }
-        if (user && user.trim()) {
-            const rexUser = new RegExp(user.trim(), "i");
+        if (user) {
+            const rexUser = new RegExp(user, "i");
             and.push({ "user.username": rexUser });
         }
         if (from || to) {
             const cond = {};
-            if (from) cond.$gte = from;
-            if (to) cond.$lte = to;
+            if (from) {
+                if (!isValidDateString(from)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                cond.$gte = from;
+            }
+            if (to) {
+                if (!isValidDateString(to)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                cond.$lte = to;
+            }
             and.push({ date: cond });
         }
         if (typeof isPublic !== "undefined" && isPublic !== "") {
@@ -90,8 +127,8 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
         const dataPipeline = [
             ...pipeline,
             { $sort: { createdAt: -1 } },
-            { $skip: (+page - 1) * +size },
-            { $limit: +size }
+            { $skip: (page - 1) * size },
+            { $limit: size }
         ];
 
         const logs = await Log.aggregate(dataPipeline);
@@ -114,15 +151,24 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
  * ========================= */
 router.delete("/logs/:id", protect, adminOnly, async (req, res) => {
     try {
-        const removed = await Log.findByIdAndDelete(req.params.id);
-        if (!removed) return res.status(404).json({ message: "해당 로그를 찾을 수 없습니다" });
+        const removed = await Log.findById(req.params.id);
+        if (!removed) return res.status(404).json({ message: "Log not found." });
+
+        await Log.deleteOne({ _id: removed._id });
+        await recordDeletion({
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            targetType: "log",
+            target: removed,
+            meta: { source: "admin" },
+        });
 
         if (removed.image?.key) {
             try {
                 await deleteS3Object(removed.image.key);
-            } catch { /* S3에 없을 수 있음 */ }
+            } catch { /* ignore */ }
         }
-        res.json({ message: "관리자에 의해 로그가 삭제되었습니다" });
+        res.json({ message: "Admin deleted log." });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -135,19 +181,26 @@ router.delete("/logs/:id", protect, adminOnly, async (req, res) => {
 router.delete("/users/:id", protect, adminOnly, async (req, res) => {
     try {
         const uid = req.params.id;
+        const user = await User.findById(uid);
+        if (!user) return res.status(404).json({ message: "User not found." });
 
-        // 사용자의 로그 모두 삭제 + S3 정리
         const logs = await Log.find({ userId: uid });
         for (const l of logs) {
             if (l.image?.key) { try { await deleteS3Object(l.image.key); } catch { } }
         }
         await Log.deleteMany({ userId: uid });
 
-        // 유저 삭제
-        const gone = await User.findByIdAndDelete(uid);
-        if (!gone) return res.status(404).json({ message: "유저 없음" });
+        await User.findByIdAndDelete(uid);
 
-        res.json({ message: "강제탈퇴 완료" });
+        await recordDeletion({
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            targetType: "user",
+            target: user,
+            meta: { logsDeleted: logs.length, source: "admin" },
+        });
+
+        res.json({ message: "Admin deleted user." });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

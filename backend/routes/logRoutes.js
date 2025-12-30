@@ -3,41 +3,86 @@ import express from "express";
 import Log from "../models/Log.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { deleteS3Object } from "../src/s3.js";
+import { cooldown } from "../middleware/cooldown.js";
+import { recordDeletion } from "../utils/audit.js";
+import {
+    coerceBoolean,
+    isValidDateString,
+    normalizePagination,
+    trimString,
+} from "../utils/validation.js";
 
 const router = express.Router();
 // ✅ 테스트를 위해 페이지당 2개로 설정
 const ITEMS_PER_PAGE = 2;
 
 // 생성
-router.post("/", protect, async (req, res) => {
-    try {
-        const { game, date, result, notes, image, isPublic = true } = req.body;
-        const doc = await Log.create({
-            userId: req.user.id,
-            game,
-            date,
-            result,
-            notes,
-            image: image || null,
-            isPublic,
-        });
-        res.status(201).json(doc);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+router.post(
+    "/",
+    protect,
+    cooldown({
+        keyFn: (req) => req.user?.id || req.ip,
+        message: "Please wait before creating another log.",
+    }),
+    async (req, res) => {
+        try {
+            const game = trimString(req.body?.game, 50);
+            const date = trimString(req.body?.date, 10);
+            const result = trimString(req.body?.result, 100);
+            const notes = trimString(req.body?.notes, 2000);
+            const isPublic =
+                req.body?.isPublic === undefined
+                    ? true
+                    : coerceBoolean(req.body?.isPublic, null);
+
+            if (!game || !date || !result) {
+                return res.status(400).json({ message: "Invalid log data." });
+            }
+            if (!isValidDateString(date)) {
+                return res.status(400).json({ message: "Invalid date format." });
+            }
+            if (isPublic === null) {
+                return res.status(400).json({ message: "Invalid isPublic value." });
+            }
+
+            let image = null;
+            if (req.body?.image === null) {
+                image = null;
+            } else if (req.body?.image && typeof req.body.image === "object") {
+                const key = trimString(req.body.image.key, 200);
+                const url = trimString(req.body.image.url, 500);
+                if (key || url) image = { key, url };
+            }
+            const doc = await Log.create({
+                userId: req.user.id,
+                game,
+                date,
+                result,
+                notes,
+                image,
+                isPublic,
+            });
+            res.status(201).json(doc);
+        } catch (err) {
+            res.status(500).json({ message: err.message });
+        }
     }
-});
+);
 
 // ✅ [수정] 내 로그 (페이지네이션 적용)
 router.get("/", protect, async (req, res) => {
     try {
-        const { page = 1, size = ITEMS_PER_PAGE } = req.query;
+        const { page, size } = normalizePagination(req.query.page, req.query.size, {
+            defaultSize: ITEMS_PER_PAGE,
+            maxSize: 50,
+        });
         const filter = { userId: req.user.id };
 
         const total = await Log.countDocuments(filter);
         const logs = await Log.find(filter)
             .sort({ createdAt: -1 }) // 최신순 정렬
-            .skip((+page - 1) * +size)
-            .limit(+size);
+            .skip((page - 1) * size)
+            .limit(size);
 
         res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
     } catch (err) {
@@ -48,20 +93,32 @@ router.get("/", protect, async (req, res) => {
 // ✅ [수정] 내 로그 검색 (페이지네이션 적용)
 router.get("/search", protect, async (req, res) => {
     try {
-        const { q, from, to, page = 1, size = ITEMS_PER_PAGE } = req.query;
+        const q = trimString(req.query.q, 100);
+        const from = trimString(req.query.from, 10);
+        const to = trimString(req.query.to, 10);
+        const { page, size } = normalizePagination(req.query.page, req.query.size, {
+            defaultSize: ITEMS_PER_PAGE,
+            maxSize: 50,
+        });
         const userId = req.user.id;
 
         const filter = { userId };
-        if (q && q.trim()) {
-            const rex = new RegExp(q.trim(), "i");
+        if (q) {
+            const rex = new RegExp(q, "i");
             filter.$or = [{ game: rex }, { result: rex }, { notes: rex }];
         }
         const dateFilter = {};
-        if (from && from.trim()) {
-            dateFilter.$gte = from.trim();
+        if (from) {
+            if (!isValidDateString(from)) {
+                return res.status(400).json({ message: "Invalid date format." });
+            }
+            dateFilter.$gte = from;
         }
-        if (to && to.trim()) {
-            dateFilter.$lte = to.trim();
+        if (to) {
+            if (!isValidDateString(to)) {
+                return res.status(400).json({ message: "Invalid date format." });
+            }
+            dateFilter.$lte = to;
         }
         if (Object.keys(dateFilter).length > 0) {
             filter.date = dateFilter;
@@ -70,8 +127,8 @@ router.get("/search", protect, async (req, res) => {
         const total = await Log.countDocuments(filter);
         const logs = await Log.find(filter)
             .sort({ createdAt: -1 })
-            .skip((+page - 1) * +size)
-            .limit(+size);
+            .skip((page - 1) * size)
+            .limit(size);
 
         res.json({ logs, total }); // ✅ { logs, total } 객체로 응답
     } catch (err) {
@@ -84,21 +141,19 @@ router.get("/search", protect, async (req, res) => {
  * ========================= */
 router.get("/public/feed", async (req, res) => {
     try {
-        const {
-            game = "",
-            mode = "",
-            q = "",
-            author = "",
-            sort = "latest",
-            from = "",
-            to = "",
-            isPublic = "",
-            page = 1,
-            size = ITEMS_PER_PAGE,
-        } = req.query;
-
-        const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const sizeNum = Math.max(1, parseInt(size, 10) || ITEMS_PER_PAGE);
+        const game = trimString(req.query.game, 50);
+        const mode = trimString(req.query.mode, 20);
+        const q = trimString(req.query.q, 100);
+        const author = trimString(req.query.author, 50);
+        const sort = trimString(req.query.sort, 20);
+        const from = trimString(req.query.from, 10);
+        const to = trimString(req.query.to, 10);
+        const isPublic = req.query.isPublic;
+        const { page: pageNum, size: sizeNum } = normalizePagination(
+            req.query.page,
+            req.query.size,
+            { defaultSize: ITEMS_PER_PAGE, maxSize: 50 }
+        );
 
         // 1) 기본 필터링 파이프라인
         const pipeline = [
@@ -119,25 +174,35 @@ router.get("/public/feed", async (req, res) => {
 
         const and = [];
 
-        if (game && game.trim()) and.push({ game: game.trim() });
+        if (game) and.push({ game });
 
-        if (q && q.trim()) {
-            const rex = new RegExp(q.trim(), "i");
+        if (q) {
+            const rex = new RegExp(q, "i");
             if (mode === "title") and.push({ result: rex });
             else if (mode === "content") and.push({ notes: rex });
             else if (mode === "title_content") and.push({ $or: [{ result: rex }, { notes: rex }] });
             else and.push({ $or: [{ game: rex }, { result: rex }, { notes: rex }] });
         }
 
-        if (author && author.trim()) {
-            const rex = new RegExp(author.trim(), "i");
+        if (author) {
+            const rex = new RegExp(author, "i");
             and.push({ "user.username": rex });
         }
 
         if (from || to) {
             const cond = {};
-            if (from && from.trim()) cond.$gte = from.trim();
-            if (to && to.trim()) cond.$lte = to.trim();
+            if (from) {
+                if (!isValidDateString(from)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                cond.$gte = from;
+            }
+            if (to) {
+                if (!isValidDateString(to)) {
+                    return res.status(400).json({ message: "Invalid date format." });
+                }
+                cond.$lte = to;
+            }
             and.push({ date: cond });
         }
 
@@ -179,17 +244,55 @@ router.get("/public/feed", async (req, res) => {
 // 수정
 router.patch("/:id", protect, async (req, res) => {
     try {
-        const allow = ["game", "date", "result", "notes", "image", "isPublic"];
         const fields = {};
-        allow.forEach((k) => {
-            if (req.body[k] !== undefined) fields[k] = req.body[k];
-        });
+        if (req.body?.game !== undefined) {
+            const game = trimString(req.body.game, 50);
+            if (!game) return res.status(400).json({ message: "Invalid game value." });
+            fields.game = game;
+        }
+        if (req.body?.date !== undefined) {
+            const date = trimString(req.body.date, 10);
+            if (!isValidDateString(date)) {
+                return res.status(400).json({ message: "Invalid date format." });
+            }
+            fields.date = date;
+        }
+        if (req.body?.result !== undefined) {
+            const result = trimString(req.body.result, 100);
+            if (!result) return res.status(400).json({ message: "Invalid result value." });
+            fields.result = result;
+        }
+        if (req.body?.notes !== undefined) {
+            fields.notes = trimString(req.body.notes, 2000);
+        }
+        if (req.body?.isPublic !== undefined) {
+            const isPublic = coerceBoolean(req.body.isPublic, null);
+            if (isPublic === null) {
+                return res.status(400).json({ message: "Invalid isPublic value." });
+            }
+            fields.isPublic = isPublic;
+        }
+        if (req.body?.image !== undefined) {
+            if (req.body.image === null) {
+                fields.image = null;
+            } else if (req.body.image && typeof req.body.image === "object") {
+                const key = trimString(req.body.image.key, 200);
+                const url = trimString(req.body.image.url, 500);
+                fields.image = key || url ? { key, url } : null;
+            } else {
+                return res.status(400).json({ message: "Invalid image value." });
+            }
+        }
+
+        if (Object.keys(fields).length === 0) {
+            return res.status(400).json({ message: "No valid fields to update." });
+        }
 
         const prev = await Log.findOne({ _id: req.params.id, userId: req.user.id });
-        if (!prev) return res.status(404).json({ message: "없거나 권한 없음" });
+        if (!prev) return res.status(404).json({ message: "Not found or unauthorized." });
 
-        const newKey = req.body?.image?.key;
-        if (newKey && prev?.image?.key && prev.image.key !== newKey) {
+        const newKey = fields.image?.key;
+        if (req.body?.image !== undefined && prev?.image?.key && prev.image.key !== newKey) {
             try {
                 await deleteS3Object(prev.image.key);
             } catch { }
@@ -205,18 +308,25 @@ router.patch("/:id", protect, async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-
-// 삭제
 router.delete("/:id", protect, async (req, res) => {
     try {
-        const doc = await Log.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
-        if (!doc) return res.status(404).json({ message: "없거나 권한 없음" });
+        const doc = await Log.findOne({ _id: req.params.id, userId: req.user.id });
+        if (!doc) return res.status(404).json({ message: "Not found or unauthorized." });
+
+        await Log.deleteOne({ _id: doc._id });
+        await recordDeletion({
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            targetType: "log",
+            target: doc,
+        });
+
         if (doc.image?.key) {
             try {
                 await deleteS3Object(doc.image.key);
             } catch { }
         }
-        res.json({ message: "삭제됨" });
+        res.json({ message: "Deleted." });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
