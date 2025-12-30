@@ -1,66 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
 import { Link } from "react-router-dom";
+import Pagination from "../../components/Pagination";
+import { ITEMS_PER_PAGE } from "../../constants/pagination";
+import usePagination from "../../hooks/usePagination";
 import "./Dashboard.scss"; // ✅ SCSS 파일 임포트
-
-// ✅ 페이지네이션을 위한 상수 (테스트용 2개)
-const ITEMS_PER_PAGE = 2;
-
-// ✅ 페이지네이션 컴포넌트
-function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalItems === 0) return null;
-
-    const handlePageClick = (page) => {
-        if (page < 1 || page > totalPages || page === currentPage) return;
-        onPageChange(page);
-    };
-
-    const getPageNumbers = () => {
-        const pages = [];
-        const maxPagesToShow = 5;
-        const start = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        const end = Math.min(Math.max(1, totalPages), start + maxPagesToShow - 1);
-
-        if (start > 1) {
-            pages.push(1);
-            if (start > 2) pages.push('...');
-        }
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        if (end < totalPages) {
-            if (end < totalPages - 1) pages.push('...');
-            pages.push(totalPages);
-        }
-        return pages;
-    };
-
-    return (
-        <nav className="pagination-controls">
-            <button onClick={() => handlePageClick(currentPage - 1)} disabled={currentPage === 1}>
-                이전
-            </button>
-            {getPageNumbers().map((page, index) =>
-                typeof page === 'number' ? (
-                    <button
-                        key={index}
-                        className={page === currentPage ? 'active' : ''}
-                        onClick={() => handlePageClick(page)}
-                    >
-                        {page}
-                    </button>
-                ) : (
-                    <span key={index} className="page-info">...</span>
-                )
-            )}
-            <button onClick={() => handlePageClick(currentPage + 1)} disabled={currentPage === totalPages}>
-                다음
-            </button>
-        </nav>
-    );
-}
-
 
 export default function Dashboard() {
     const [logs, setLogs] = useState([]);
@@ -73,8 +17,7 @@ export default function Dashboard() {
     const [to, setTo] = useState("");
 
     // ✅ 페이지네이션 state 추가
-    const [page, setPage] = useState(1);
-    const [totalLogs, setTotalLogs] = useState(0);
+    const { page, totalItems: totalLogs, setPagination: setLogsPagination } = usePagination();
     // ✅ 검색 모드인지 일반 모드인지 확인
     const [isSearching, setIsSearching] = useState(false);
 
@@ -93,8 +36,7 @@ export default function Dashboard() {
             // ✅ 백엔드 응답이 { logs, total } 객체
             // ✅ [수정] .reverse() 제거 (백엔드가 이미 최신순으로 정렬)
             setLogs(data.logs);
-            setTotalLogs(data.total || 0);
-            setPage(requestedPage);
+            setLogsPagination({ page: requestedPage, totalItems: data.total || 0 });
         } catch (e) {
             setErr(e?.response?.data?.message || "불러오기 실패");
         } finally {
@@ -130,8 +72,7 @@ export default function Dashboard() {
             });
             // ✅ 백엔드 응답이 { logs, total } 객체
             setLogs(data.logs);
-            setTotalLogs(data.total || 0);
-            setPage(requestedPage);
+            setLogsPagination({ page: requestedPage, totalItems: data.total || 0 });
             setIsSearching(true); // ✅ 검색 모드 활성화
         } catch (e) {
             setErr(e?.response?.data?.message || "검색 실패");

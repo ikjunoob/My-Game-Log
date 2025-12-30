@@ -5,72 +5,10 @@ import {
     adminDeleteLog,
     adminDeleteUser,
 } from "../../api/admin";
+import Pagination from "../../components/Pagination";
+import { ITEMS_PER_PAGE } from "../../constants/pagination";
+import usePagination from "../../hooks/usePagination";
 import "./Admin.scss"; // ✅ SCSS 파일 임포트
-
-// ✅ 페이지네이션을 위한 상수
-const ITEMS_PER_PAGE = 2;
-
-// ✅ 페이지네이션 컴포넌트
-function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-    // ✅ [수정] totalPages <= 1 일 때 숨기는 대신, totalItems가 0일 때만 숨깁니다.
-    if (totalItems === 0) return null;
-
-    const handlePageClick = (page) => {
-        if (page < 1 || page > totalPages || page === currentPage) return;
-        onPageChange(page);
-    };
-
-    // 페이지 번호 생성 로직 (예: ... 3 4 [5] 6 7 ...)
-    const getPageNumbers = () => {
-        const pages = [];
-        const maxPagesToShow = 5; // 주변에 몇 개의 페이지를 보여줄지
-        const start = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        // ✅ [수정] totalPages가 0이 되는 엣지 케이스 방지 (Math.max(1, ...))
-        const end = Math.min(Math.max(1, totalPages), start + maxPagesToShow - 1);
-
-        if (start > 1) {
-            pages.push(1);
-            if (start > 2) pages.push('...');
-        }
-
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-
-        if (end < totalPages) {
-            if (end < totalPages - 1) pages.push('...');
-            pages.push(totalPages);
-        }
-        return pages;
-    };
-
-    return (
-        <nav className="pagination-controls">
-            <button onClick={() => handlePageClick(currentPage - 1)} disabled={currentPage === 1}>
-                이전
-            </button>
-            {getPageNumbers().map((page, index) =>
-                typeof page === 'number' ? (
-                    <button
-                        key={index}
-                        className={page === currentPage ? 'active' : ''}
-                        onClick={() => handlePageClick(page)}
-                    >
-                        {page}
-                    </button>
-                ) : (
-                    <span key={index} className="page-info">...</span>
-                )
-            )}
-            <button onClick={() => handlePageClick(currentPage + 1)} disabled={currentPage === totalPages}>
-                다음
-            </button>
-        </nav>
-    );
-}
-
 
 export default function Admin() {
     const [tab, setTab] = useState("users"); // "users" | "logs"
@@ -85,8 +23,8 @@ export default function Admin() {
     const [ufrom, setUfrom] = useState("");
     const [uto, setUto] = useState("");
     // ✅ 유저 페이지네이션 state
-    const [userPage, setUserPage] = useState(1);
-    const [userTotal, setUserTotal] = useState(0);
+    const { page: userPage, totalItems: userTotal, setPagination: setUserPagination } =
+        usePagination();
 
     // --- Logs state ---
     const [lq, setLq] = useState("");
@@ -95,8 +33,8 @@ export default function Admin() {
     const [lto, setLto] = useState("");
     const [lpub, setLpub] = useState("");
     // ✅ 로그 페이지네이션 state
-    const [logPage, setLogPage] = useState(1);
-    const [logTotal, setLogTotal] = useState(0);
+    const { page: logPage, totalItems: logTotal, setPagination: setLogPagination } =
+        usePagination();
 
     // ✅ 'Enter' 키 핸들러 (Select 태그용)
     const handleUserSelectKeyDown = (e) => {
@@ -113,7 +51,7 @@ export default function Admin() {
     };
 
     // ✅ [수정] fetchUsers (페이지네이션 적용)
-    async function fetchUsers(page = 1) {
+    async function fetchUsers(requestedPage = 1) {
         setLoading(true);
         setErr("");
         try {
@@ -122,13 +60,12 @@ export default function Admin() {
                 role: urole,
                 from: ufrom,
                 to: uto,
-                page: page, // ✅ 페이지 파라미터 전달
+                page: requestedPage, // ✅ 페이지 파라미터 전달
                 size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
             // ✅ 응답 데이터 구조에 맞게 수정
             setUsers(Array.isArray(data.users) ? data.users : []);
-            setUserTotal(data.total || 0);
-            setUserPage(page);
+            setUserPagination({ page: requestedPage, totalItems: data.total || 0 });
         } catch (e) {
             setErr(e?.response?.data?.message || "유저 목록을 불러오지 못했습니다.");
         } finally {
@@ -137,7 +74,7 @@ export default function Admin() {
     }
 
     // ✅ [수정] fetchLogs (페이지네이션 적용)
-    async function fetchLogs(page = 1) {
+    async function fetchLogs(requestedPage = 1) {
         setLoading(true);
         setErr("");
         try {
@@ -147,13 +84,12 @@ export default function Admin() {
                 from: lfrom,
                 to: lto,
                 isPublic: lpub,
-                page: page, // ✅ 페이지 파라미터 전달
+                page: requestedPage, // ✅ 페이지 파라미터 전달
                 size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
             // ✅ API가 { logs, total }을 반환한다고 가정
             setLogs(Array.isArray(data.logs) ? data.logs : []);
-            setLogTotal(data.total || 0);
-            setLogPage(page);
+            setLogPagination({ page: requestedPage, totalItems: data.total || 0 });
         } catch (e) {
             setErr(e?.response?.data?.message || "로그 목록을 불러오지 못했습니다.");
         } finally {
