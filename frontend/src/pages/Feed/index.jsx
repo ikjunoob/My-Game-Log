@@ -1,66 +1,10 @@
 import { useEffect, useState } from "react";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
+import Pagination from "../../components/Pagination";
+import { ITEMS_PER_PAGE } from "../../constants/pagination";
+import usePagination from "../../hooks/usePagination";
 import "./Feed.scss"; // ✅ Feed 전용 SCSS
-
-// ✅ 페이지네이션을 위한 상수 (테스트용 2개)
-const ITEMS_PER_PAGE = 2;
-
-// ✅ 페이지네이션 컴포넌트 (Admin.jsx에서 복사)
-function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalItems === 0) return null; // 아이템이 없으면 숨김
-
-    const handlePageClick = (page) => {
-        if (page < 1 || page > totalPages || page === currentPage) return;
-        onPageChange(page);
-    };
-
-    const getPageNumbers = () => {
-        const pages = [];
-        const maxPagesToShow = 5;
-        const start = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        const end = Math.min(Math.max(1, totalPages), start + maxPagesToShow - 1);
-
-        if (start > 1) {
-            pages.push(1);
-            if (start > 2) pages.push('...');
-        }
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        if (end < totalPages) {
-            if (end < totalPages - 1) pages.push('...');
-            pages.push(totalPages);
-        }
-        return pages;
-    };
-
-    return (
-        <nav className="pagination-controls">
-            <button onClick={() => handlePageClick(currentPage - 1)} disabled={currentPage === 1}>
-                이전
-            </button>
-            {getPageNumbers().map((page, index) =>
-                typeof page === 'number' ? (
-                    <button
-                        key={index}
-                        className={page === currentPage ? 'active' : ''}
-                        onClick={() => handlePageClick(page)}
-                    >
-                        {page}
-                    </button>
-                ) : (
-                    <span key={index} className="page-info">...</span>
-                )
-            )}
-            <button onClick={() => handlePageClick(currentPage + 1)} disabled={currentPage === totalPages}>
-                다음
-            </button>
-        </nav>
-    );
-}
-
 
 export default function Feed() {
     const [logs, setLogs] = useState([]);
@@ -74,8 +18,7 @@ export default function Feed() {
     const [author, setAuthor] = useState("");
     const [sort, setSort] = useState("latest");
 
-    const [page, setPage] = useState(1);
-    const [totalLogs, setTotalLogs] = useState(0);
+    const { page, totalItems: totalLogs, setPagination: setFeedPagination } = usePagination();
 
     // ✅ [수정] 로컬 스토리지에서 'user' 객체와 'userId'를 가져옵니다.
     const [user, setUser] = useState(() => {
@@ -102,7 +45,7 @@ export default function Feed() {
 
             if (!data || !Array.isArray(data.logs)) {
                 setLogs([]);
-                setTotalLogs(0);
+                setFeedPagination({ totalItems: 0 });
                 return;
             }
 
@@ -116,8 +59,7 @@ export default function Feed() {
             });
 
             setLogs(mergedLogs);
-            setTotalLogs(data.total || 0);
-            setPage(requestedPage);
+            setFeedPagination({ page: requestedPage, totalItems: data.total || 0 });
 
         } catch (e) {
             setErr(e?.response?.data?.message || "피드를 불러오지 못했습니다.");
