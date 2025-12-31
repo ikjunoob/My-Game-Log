@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
 import { Link, useSearchParams } from "react-router-dom";
 import Pagination from "../../components/Pagination";
 import { ITEMS_PER_PAGE } from "../../constants/pagination";
 import usePagination from "../../hooks/usePagination";
+import { endPerf, startPerf } from "../../utils/perf";
 import "./Dashboard.scss"; // ✅ SCSS 파일 임포트
 
 export default function Dashboard() {
@@ -20,6 +21,8 @@ export default function Dashboard() {
     const { page, totalItems: totalLogs, setPagination: setLogsPagination } = usePagination();
     // URL 쿼리와 검색 상태를 동기화한다.
     const [searchParams, setSearchParams] = useSearchParams();
+    // ??? ?? ??? ????.
+    const perfRef = useRef(null);
 
     // 현재 상태를 URL 파라미터로 변환한다.
     const buildSearchParams = (next) => {
@@ -53,6 +56,10 @@ export default function Dashboard() {
             setErr(e?.response?.data?.message || "불러오기 실패");
         } finally {
             setLoading(false);
+            if (perfRef.current) {
+                endPerf(perfRef.current.label, perfRef.current.meta);
+                perfRef.current = null;
+            }
         }
     };
 
@@ -72,6 +79,10 @@ export default function Dashboard() {
             setErr(e?.response?.data?.message || "검색 실패");
         } finally {
             setLoading(false);
+            if (perfRef.current) {
+                endPerf(perfRef.current.label, perfRef.current.meta);
+                perfRef.current = null;
+            }
         }
     };
 
@@ -90,6 +101,13 @@ export default function Dashboard() {
 
         const searching = Boolean(nextQ || nextFrom || nextTo);
         setIsSearching(searching);
+
+        const label = searching ? "dashboard:search" : "dashboard:list";
+        startPerf(label);
+        perfRef.current = {
+            label,
+            meta: { page: nextPage },
+        };
 
         if (searching) {
             runSearch(nextPage, { q: nextQ, from: nextFrom, to: nextTo });

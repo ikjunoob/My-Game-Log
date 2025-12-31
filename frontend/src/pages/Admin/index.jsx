@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
     adminSearchUsers,
@@ -10,6 +10,7 @@ import {
 import Pagination from "../../components/Pagination";
 import { ITEMS_PER_PAGE } from "../../constants/pagination";
 import usePagination from "../../hooks/usePagination";
+import { endPerf, startPerf } from "../../utils/perf";
 import "./Admin.scss"; // ✅ SCSS 파일 임포트
 
 export default function Admin() {
@@ -39,6 +40,8 @@ export default function Admin() {
         usePagination();
     // URL 쿼리와 관리자 필터 상태를 동기화한다.
     const [searchParams, setSearchParams] = useSearchParams();
+    // ??? ?? ??? ????.
+    const perfRef = useRef(null);
 
     // 사용자 탭 상태를 URL 파라미터로 만든다.
     const buildUserParams = ({ page, q, role, from, to } = {}) => {
@@ -102,6 +105,10 @@ export default function Admin() {
             setErr(e?.response?.data?.message || "유저 목록을 불러오지 못했습니다.");
         } finally {
             setLoading(false);
+            if (perfRef.current) {
+                endPerf(perfRef.current.label, perfRef.current.meta);
+                perfRef.current = null;
+            }
         }
     }
 
@@ -129,6 +136,10 @@ export default function Admin() {
             setErr(e?.response?.data?.message || "로그 목록을 불러오지 못했습니다.");
         } finally {
             setLoading(false);
+            if (perfRef.current) {
+                endPerf(perfRef.current.label, perfRef.current.meta);
+                perfRef.current = null;
+            }
         }
     }
 
@@ -141,6 +152,13 @@ export default function Admin() {
 
         const pageParam = parseInt(searchParams.get("page"), 10);
         const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
+        const label = nextTab === "users" ? "admin:users" : "admin:logs";
+        startPerf(label);
+        perfRef.current = {
+            label,
+            meta: { page: nextPage, tab: nextTab },
+        };
 
         if (nextTab === "users") {
             const nextQ = searchParams.get("q") || "";
