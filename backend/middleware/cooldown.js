@@ -1,3 +1,4 @@
+// 짧은 시간 내 반복 요청을 막는 간단한 쿨다운.
 const DEFAULT_WINDOW_MS = 10 * 1000;
 
 const bucket = new Map();
@@ -10,6 +11,7 @@ const getKey = (req, keyFn) => {
     }
 };
 
+// 일정 시간 내 요청을 차단하는 미들웨어.
 export const cooldown = (options = {}) => {
     const { windowMs = DEFAULT_WINDOW_MS, keyFn, message } = options;
     return (req, res, next) => {

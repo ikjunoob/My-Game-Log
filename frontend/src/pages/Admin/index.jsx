@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     adminSearchUsers,
     adminSearchLogs,
@@ -36,31 +37,61 @@ export default function Admin() {
     // ✅ 로그 페이지네이션 state
     const { page: logPage, totalItems: logTotal, setPagination: setLogPagination } =
         usePagination();
+    // URL 쿼리와 관리자 필터 상태를 동기화한다.
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // 사용자 탭 상태를 URL 파라미터로 만든다.
+    const buildUserParams = ({ page, q, role, from, to } = {}) => {
+        const p = new URLSearchParams();
+        p.set("tab", "users");
+        if (page && page !== 1) p.set("page", String(page));
+        if (q) p.set("q", q);
+        if (role) p.set("role", role);
+        if (from) p.set("from", from);
+        if (to) p.set("to", to);
+        return p;
+    };
+
+    // 로그 탭 상태를 URL 파라미터로 만든다.
+    const buildLogParams = ({ page, q, user, from, to, isPublic } = {}) => {
+        const p = new URLSearchParams();
+        p.set("tab", "logs");
+        if (page && page !== 1) p.set("page", String(page));
+        if (q) p.set("q", q);
+        if (user) p.set("user", user);
+        if (from) p.set("from", from);
+        if (to) p.set("to", to);
+        if (isPublic !== "" && isPublic !== undefined) p.set("isPublic", isPublic);
+        return p;
+    };
 
     // ✅ 'Enter' 키 핸들러 (Select 태그용)
     const handleUserSelectKeyDown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            fetchUsers(1); // 엔터 시 1페이지부터 검색
+            setSearchParams(buildUserParams({ page: 1, q: uq, role: urole, from: ufrom, to: uto }));
         }
     };
     const handleLogSelectKeyDown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            fetchLogs(1); // 엔터 시 1페이지부터 검색
+            setSearchParams(buildLogParams({ page: 1, q: lq, user: luser, from: lfrom, to: lto, isPublic: lpub }));
         }
     };
 
     // ✅ [수정] fetchUsers (페이지네이션 적용)
-    async function fetchUsers(requestedPage = 1) {
+    async function fetchUsers(requestedPage = 1, params) {
         setLoading(true);
         setErr("");
         try {
-            const data = await adminSearchUsers({
+            const searchParams = params || {
                 q: uq,
                 role: urole,
                 from: ufrom,
                 to: uto,
+            };
+            const data = await adminSearchUsers({
+                ...searchParams,
                 page: requestedPage, // ✅ 페이지 파라미터 전달
                 size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
@@ -75,16 +106,19 @@ export default function Admin() {
     }
 
     // ✅ [수정] fetchLogs (페이지네이션 적용)
-    async function fetchLogs(requestedPage = 1) {
+    async function fetchLogs(requestedPage = 1, params) {
         setLoading(true);
         setErr("");
         try {
-            const data = await adminSearchLogs({
+            const searchParams = params || {
                 q: lq,
                 user: luser,
                 from: lfrom,
                 to: lto,
                 isPublic: lpub,
+            };
+            const data = await adminSearchLogs({
+                ...searchParams,
                 page: requestedPage, // ✅ 페이지 파라미터 전달
                 size: ITEMS_PER_PAGE, // ✅ 사이즈 파라미터 전달
             });
@@ -99,11 +133,54 @@ export default function Admin() {
     }
 
     // ✅ [수정] 초기 로드 시 1페이지 호출
+    // URL에서 탭/필터를 읽고 목록을 불러온다.
     useEffect(() => {
-        fetchUsers(1);
-        fetchLogs(1);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        const tabParam = searchParams.get("tab");
+        const nextTab = tabParam === "logs" ? "logs" : "users";
+        setTab(nextTab);
+
+        const pageParam = parseInt(searchParams.get("page"), 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
+        if (nextTab === "users") {
+            const nextQ = searchParams.get("q") || "";
+            const nextRole = searchParams.get("role") || "";
+            const nextFrom = searchParams.get("from") || "";
+            const nextTo = searchParams.get("to") || "";
+
+            setUq(nextQ);
+            setUrole(nextRole);
+            setUfrom(nextFrom);
+            setUto(nextTo);
+
+            fetchUsers(nextPage, {
+                q: nextQ,
+                role: nextRole,
+                from: nextFrom,
+                to: nextTo,
+            });
+        } else {
+            const nextQ = searchParams.get("q") || "";
+            const nextUser = searchParams.get("user") || "";
+            const nextFrom = searchParams.get("from") || "";
+            const nextTo = searchParams.get("to") || "";
+            const nextIsPublic = searchParams.get("isPublic") || "";
+
+            setLq(nextQ);
+            setLuser(nextUser);
+            setLfrom(nextFrom);
+            setLto(nextTo);
+            setLpub(nextIsPublic);
+
+            fetchLogs(nextPage, {
+                q: nextQ,
+                user: nextUser,
+                from: nextFrom,
+                to: nextTo,
+                isPublic: nextIsPublic,
+            });
+        }
+    }, [searchParams]);
 
     const handleDeleteLog = async (id) => {
         if (!confirm("이 로그를 관리자 권한으로 삭제할까요? (이미지도 함께 제거됩니다)")) return;
@@ -137,14 +214,24 @@ export default function Admin() {
     // ✅ [수정] 탭 변경 시 1페이지부터 다시 로드
     const handleTabChange = (newTab) => {
         setTab(newTab);
-        if (newTab === 'users') {
-            fetchUsers(1);
+        if (newTab === "users") {
+            setSearchParams(buildUserParams({ page: 1, q: uq, role: urole, from: ufrom, to: uto }));
         } else {
-            fetchLogs(1);
+            setSearchParams(buildLogParams({ page: 1, q: lq, user: luser, from: lfrom, to: lto, isPublic: lpub }));
         }
     };
 
+    // 페이지 변경 시 URL만 갱신한다.
+    const handleUserPageChange = (nextPage) => {
+        setSearchParams(buildUserParams({ page: nextPage, q: uq, role: urole, from: ufrom, to: uto }));
+    };
 
+    const handleLogPageChange = (nextPage) => {
+        setSearchParams(buildLogParams({ page: nextPage, q: lq, user: luser, from: lfrom, to: lto, isPublic: lpub }));
+    };
+
+
+    // 백업 파일(JSON)을 다운로드한다.
     const handleExport = async () => {
         try {
             const type = "all";
@@ -215,7 +302,7 @@ export default function Admin() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            fetchUsers(1); // ✅ 검색 시 1페이지부터
+                            setSearchParams(buildUserParams({ page: 1, q: uq, role: urole, from: ufrom, to: uto }));
                         }}
                         className="card admin-search-form"
                     >
@@ -259,7 +346,7 @@ export default function Admin() {
                                     setUrole("");
                                     setUfrom("");
                                     setUto("");
-                                    fetchUsers(1); // ✅ 초기화 시 1페이지부터
+                                    setSearchParams(buildUserParams({ page: 1 })); // ✅ 초기화 시 1페이지부터
                                 }}
                             >
                                 초기화
@@ -306,7 +393,7 @@ export default function Admin() {
                         currentPage={userPage}
                         totalItems={userTotal}
                         itemsPerPage={ITEMS_PER_PAGE}
-                        onPageChange={fetchUsers}
+                        onPageChange={handleUserPageChange}
                     />
                 </>
             )}
@@ -318,7 +405,7 @@ export default function Admin() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            fetchLogs(1); // ✅ 검색 시 1페이지부터
+                            setSearchParams(buildLogParams({ page: 1, q: lq, user: luser, from: lfrom, to: lto, isPublic: lpub }));
                         }}
                         className="card admin-search-form"
                     >
@@ -369,7 +456,7 @@ export default function Admin() {
                                     setLfrom("");
                                     setLto("");
                                     setLpub("");
-                                    fetchLogs(1); // ✅ 초기화 시 1페이지부터
+                                    setSearchParams(buildLogParams({ page: 1 })); // ✅ 초기화 시 1페이지부터
                                 }}
                             >
                                 초기화
@@ -437,7 +524,7 @@ export default function Admin() {
                         currentPage={logPage}
                         totalItems={logTotal}
                         itemsPerPage={ITEMS_PER_PAGE}
-                        onPageChange={fetchLogs}
+                        onPageChange={handleLogPageChange}
                     />
                 </>
             )}

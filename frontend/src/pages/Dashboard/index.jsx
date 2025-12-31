@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { listLogs, deleteLog, searchMyLogs } from "../../api/logs";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Pagination from "../../components/Pagination";
 import { ITEMS_PER_PAGE } from "../../constants/pagination";
 import usePagination from "../../hooks/usePagination";
@@ -18,6 +18,18 @@ export default function Dashboard() {
 
     // ✅ 페이지네이션 state 추가
     const { page, totalItems: totalLogs, setPagination: setLogsPagination } = usePagination();
+    // URL 쿼리와 검색 상태를 동기화한다.
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // 현재 상태를 URL 파라미터로 변환한다.
+    const buildSearchParams = (next) => {
+        const p = new URLSearchParams();
+        if (next.page && next.page !== 1) p.set("page", String(next.page));
+        if (next.q) p.set("q", next.q);
+        if (next.from) p.set("from", next.from);
+        if (next.to) p.set("to", next.to);
+        return p;
+    };
     // ✅ 검색 모드인지 일반 모드인지 확인
     const [isSearching, setIsSearching] = useState(false);
 
@@ -44,36 +56,18 @@ export default function Dashboard() {
         }
     };
 
-    // ✅ [수정] useEffect (1페이지 호출)
-    useEffect(() => { fetchLogs(1); }, []);
-
-    const onDelete = async (id) => {
-        if (!confirm("삭제할까요?")) return;
-        await deleteLog(id);
-        // ✅ [수정] 삭제 후 현재 페이지 다시 로드
-        if (isSearching) {
-            onSearch(null, page); // 검색 중이었으면 검색 API 호출
-        } else {
-            fetchLogs(page); // 아니면 기본 API 호출
-        }
-    };
-
-    // ✅ [수정] onSearch (검색용)
-    const onSearch = async (e, requestedPage = 1) => {
-        e?.preventDefault?.(); // 폼 제출 이벤트 방지
+    // 검색 전용 API 호출을 분리해 재사용한다.
+    const runSearch = async (requestedPage = 1, params) => {
+        const searchParams = params || { q, from, to };
         setErr(""); setLoading(true);
         try {
             const data = await searchMyLogs({
-                q,
-                from,
-                to,
+                ...searchParams,
                 page: requestedPage,
                 size: ITEMS_PER_PAGE
             });
-            // ✅ 백엔드 응답이 { logs, total } 객체
             setLogs(data.logs);
             setLogsPagination({ page: requestedPage, totalItems: data.total || 0 });
-            setIsSearching(true); // ✅ 검색 모드 활성화
         } catch (e) {
             setErr(e?.response?.data?.message || "검색 실패");
         } finally {
@@ -81,20 +75,54 @@ export default function Dashboard() {
         }
     };
 
-    // ✅ [수정] onReset (초기화용)
-    const onReset = async () => {
-        setQ(""); setFrom(""); setTo("");
-        setIsSearching(false); // ✅ 검색 모드 비활성화
-        fetchLogs(1); // 1페이지의 전체 목록 다시 로드
+    // ✅ [수정] useEffect (1페이지 호출)
+    // URL에서 상태를 읽고 목록/검색을 결정한다.
+    useEffect(() => {
+        const pageParam = parseInt(searchParams.get("page"), 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        const nextQ = searchParams.get("q") || "";
+        const nextFrom = searchParams.get("from") || "";
+        const nextTo = searchParams.get("to") || "";
+
+        setQ(nextQ);
+        setFrom(nextFrom);
+        setTo(nextTo);
+
+        const searching = Boolean(nextQ || nextFrom || nextTo);
+        setIsSearching(searching);
+
+        if (searching) {
+            runSearch(nextPage, { q: nextQ, from: nextFrom, to: nextTo });
+        } else {
+            fetchLogs(nextPage);
+        }
+    }, [searchParams]);
+
+    const onDelete = async (id) => {
+        if (!confirm("??????")) return;
+        await deleteLog(id);
+        if (isSearching) {
+            runSearch(page, { q, from, to });
+        } else {
+            fetchLogs(page);
+        }
     };
 
-    // ✅ 페이지 변경 핸들러
+    // URL 업데이트가 곧 조회 트리거가 된다.
+    const onSearch = (e) => {
+        e?.preventDefault?.();
+        setSearchParams(buildSearchParams({ page: 1, q, from, to }));
+    };
+
+    const onReset = () => {
+        setQ("");
+        setFrom("");
+        setTo("");
+        setSearchParams(buildSearchParams({ page: 1 }));
+    };
+
     const handlePageChange = (nextPage) => {
-        if (isSearching) {
-            onSearch(null, nextPage); // 검색 중이면 검색 API 호출
-        } else {
-            fetchLogs(nextPage); // 아니면 기본 API 호출
-        }
+        setSearchParams(buildSearchParams({ page: nextPage, q, from, to }));
     };
 
     const handleFromDateClick = () => {

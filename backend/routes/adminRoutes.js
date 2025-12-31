@@ -86,7 +86,7 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
         });
 
 /** =========================
- * backup export (json)
+ * 백업 내보내기 (json)
  * GET /api/admin/backup?type=users|logs|deletions|all
  * ========================= */
 router.get("/backup", protect, adminOnly, async (req, res) => {
@@ -96,6 +96,7 @@ router.get("/backup", protect, adminOnly, async (req, res) => {
         if (!allowed.has(type)) {
             return res.status(400).json({ message: "Invalid backup type." });
         }
+        // type에 따라 백업 범위를 결정.
         const includeUsers = type === "all" || type === "users";
         const includeLogs = type === "all" || type === "logs";
         const includeDeletions = type === "all" || type === "deletions";
