@@ -8,7 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Create from "./pages/Log/Create";
 import Edit from "./pages/Log/Edit";
+import LogDetail from "./pages/Log/Detail";
 import Feed from "./pages/Feed";
+import FeedDetail from "./pages/Feed/Detail";
 
 import ProtectRoute from "./components/ProtectRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -78,11 +80,13 @@ export default function App() {
 
         {/* ✅ 공개 피드: 누구나 접근 가능 */}
         <Route path="/feed" element={<Feed />} />
+        <Route path="/feed/:id" element={<FeedDetail />} />
 
         {/* 사용자 보호 구역 */}
         <Route element={<ProtectRoute isAuthed={isAuthed} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/logs/new" element={<Create />} />
+          <Route path="/logs/:id" element={<LogDetail />} />
           <Route path="/logs/:id/edit" element={<Edit />} />
         </Route>
 

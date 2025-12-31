@@ -1,5 +1,6 @@
 // backend/routes/logRoutes.js
 import express from "express";
+import mongoose from "mongoose";
 import Log from "../models/Log.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { deleteS3Object } from "../src/s3.js";
@@ -138,6 +139,22 @@ router.get("/search", protect, async (req, res) => {
     }
 });
 
+
+router.get("/:id", protect, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: "Invalid id." });
+        }
+
+        const log = await Log.findOne({ _id: id, userId: req.user.id });
+        if (!log) return res.status(404).json({ message: "Not found or unauthorized." });
+
+        res.json(log);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 /** =========================
  * ✅ 공개 피드 (페이지네이션 $facet으로 수정)
  * ========================= */
@@ -245,6 +262,25 @@ router.get("/public/feed", async (req, res) => {
 
 // 수정
 // 로그 수정(허용 필드만 업데이트).
+
+router.get("/public/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: "Invalid id." });
+        }
+
+        const log = await Log.findOne({ _id: id, isPublic: true }).populate(
+            "userId",
+            "username"
+        );
+        if (!log) return res.status(404).json({ message: "Not found." });
+
+        res.json(log);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 router.patch("/:id", protect, async (req, res) => {
     try {
         const fields = {};

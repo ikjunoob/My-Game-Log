@@ -214,6 +214,7 @@ export default function Dashboard() {
                         {logs.map((l) => (
                             <li key={l._id} className="card log-item">
                                 <div className="log-item__inner">
+                                    <Link className="log-item__link" to={`/logs/${l._id}`} state={{ log: l }}>
                                     {l.image?.url && (
                                         <img
                                             className="log-item__image"
@@ -233,6 +234,7 @@ export default function Dashboard() {
                                         </div>
                                         {l.notes && <p className="log-item__notes">{l.notes}</p>}
                                     </div>
+                                    </Link>
                                     <div className="log-item__actions">
                                         {/* ✅ 버튼 스타일 수정 */}
                                         <Link className="btn btn--secondary" to={`/logs/${l._id}/edit`} state={{ log: l }}>수정</Link>
