@@ -4,6 +4,7 @@ import {
     adminSearchLogs,
     adminDeleteLog,
     adminDeleteUser,
+    adminExportData,
 } from "../../api/admin";
 import Pagination from "../../components/Pagination";
 import { ITEMS_PER_PAGE } from "../../constants/pagination";
@@ -144,6 +145,30 @@ export default function Admin() {
     };
 
 
+    const handleExport = async () => {
+        try {
+            const type = "all";
+            const res = await adminExportData({ type });
+            const contentType = res.headers?.["content-type"] || "application/json";
+            const blob = new Blob([res.data], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const disposition = res.headers?.["content-disposition"] || "";
+            const match = disposition.match(/filename="([^"]+)"/);
+            const fileName = match && match[1] ? match[1] : `backup-${type}.json`;
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            alert(e?.response?.data?.message || "Backup failed.");
+        }
+    };
+
+
     return (
         <div className="container admin-page">
             <header className="admin-header">
@@ -157,6 +182,9 @@ export default function Admin() {
                         }}
                     >
                         새로고침
+                    </button>
+                    <button className="btn" onClick={handleExport}>
+                        Backup
                     </button>
                 </div>
             </header>

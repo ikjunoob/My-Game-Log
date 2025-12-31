@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import User from "../models/User.js";
 import Log from "../models/Log.js";
+import DeletionLog from "../models/DeletionLog.js";
 // 'adminOnly' 미들웨어 이름은 실제 파일에 맞게 확인해주세요.
 import { protect, adminOnly } from "../middleware/authMiddleware.js";
 import { deleteS3Object } from "../src/s3.js";
@@ -83,6 +84,49 @@ router.get("/logs", protect, adminOnly, async (req, res) => {
             defaultSize: ITEMS_PER_PAGE,
             maxSize: 50,
         });
+
+/** =========================
+ * backup export (json)
+ * GET /api/admin/backup?type=users|logs|deletions|all
+ * ========================= */
+router.get("/backup", protect, adminOnly, async (req, res) => {
+    try {
+        const type = trimString(req.query.type, 20) || "all";
+        const allowed = new Set(["all", "users", "logs", "deletions"]);
+        if (!allowed.has(type)) {
+            return res.status(400).json({ message: "Invalid backup type." });
+        }
+        const includeUsers = type === "all" || type === "users";
+        const includeLogs = type === "all" || type === "logs";
+        const includeDeletions = type === "all" || type === "deletions";
+
+        const payload = {
+            meta: {
+                exportedAt: new Date().toISOString(),
+                type,
+            },
+            data: {},
+        };
+
+        if (includeUsers) {
+            payload.data.users = await User.find({}).select("-password").lean();
+        }
+        if (includeLogs) {
+            payload.data.logs = await Log.find({}).lean();
+        }
+        if (includeDeletions) {
+            payload.data.deletions = await DeletionLog.find({}).lean();
+        }
+
+        const safeStamp = payload.meta.exportedAt.replace(/[:.]/g, "-");
+        const fileName = `backup-${safeStamp}.json`;
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+        res.status(200).send(JSON.stringify(payload));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
         const pipeline = [
             { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },

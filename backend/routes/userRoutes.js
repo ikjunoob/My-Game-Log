@@ -43,10 +43,6 @@ router.post(
         }
     }
 );
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
 
 // ✅ 로그인
 router.post("/login", async (req, res) => {
