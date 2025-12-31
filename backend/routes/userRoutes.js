@@ -8,6 +8,8 @@ import { trimString } from "../utils/validation.js";
 
 const router = express.Router();
 
+// 회원가입: 입력 검증 + 쿨다운 적용.
+
 // ✅ 회원가입
 router.post(
     "/register",
@@ -43,10 +45,6 @@ router.post(
         }
     }
 );
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
 
 // ✅ 로그인
 router.post("/login", async (req, res) => {
@@ -75,7 +73,10 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// 로그인: 입력 확인 후 토큰 발급.
+
 // ✅ 내 정보 조회
+// 내 정보 조회(비밀번호 제외).
 router.get("/me", protect, async (req, res) => {
     try {
         const me = await User.findById(req.user.id).select("-password");

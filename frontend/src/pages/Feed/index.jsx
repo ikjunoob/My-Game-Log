@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
 import Pagination from "../../components/Pagination";
@@ -19,6 +20,20 @@ export default function Feed() {
     const [sort, setSort] = useState("latest");
 
     const { page, totalItems: totalLogs, setPagination: setFeedPagination } = usePagination();
+    // URL 쿼리와 검색 상태를 동기화한다.
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // 현재 상태를 URL 파라미터로 변환한다.
+    const buildSearchParams = (next) => {
+        const p = new URLSearchParams();
+        if (next.page && next.page !== 1) p.set("page", String(next.page));
+        if (next.game) p.set("game", next.game);
+        if (next.mode && next.mode !== "title_content") p.set("mode", next.mode);
+        if (next.q) p.set("q", next.q);
+        if (next.author) p.set("author", next.author);
+        if (next.sort && next.sort !== "latest") p.set("sort", next.sort);
+        return p;
+    };
 
     // ✅ [수정] 로컬 스토리지에서 'user' 객체와 'userId'를 가져옵니다.
     const [user, setUser] = useState(() => {
@@ -68,11 +83,40 @@ export default function Feed() {
         }
     }
 
-    useEffect(() => { fetchFeed(1); }, []);
+    // URL에서 상태를 읽고 서버 조회를 실행한다.
+    useEffect(() => {
+        const pageParam = parseInt(searchParams.get("page"), 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        const nextGame = searchParams.get("game") || "";
+        const nextMode = searchParams.get("mode") || "title_content";
+        const nextQ = searchParams.get("q") || "";
+        const nextAuthor = searchParams.get("author") || "";
+        const nextSort = searchParams.get("sort") || "latest";
 
-    const onSearch = async (e) => { e.preventDefault(); fetchFeed(1); };
+        setGame(nextGame);
+        setMode(nextMode);
+        setQ(nextQ);
+        setAuthor(nextAuthor);
+        setSort(nextSort);
 
-    const onReset = async () => {
+        fetchFeed(nextPage, {
+            game: nextGame,
+            mode: nextMode,
+            q: nextQ,
+            author: nextAuthor,
+            sort: nextSort,
+        });
+    }, [searchParams]);
+
+    // URL 업데이트가 곧 조회 트리거가 된다.
+    const onSearch = (e) => {
+        e.preventDefault();
+        setSearchParams(
+            buildSearchParams({ page: 1, game, mode, q, author, sort })
+        );
+    };
+
+    const onReset = () => {
         const resetParams = {
             game: "",
             mode: "title_content",
@@ -85,7 +129,13 @@ export default function Feed() {
         setQ(resetParams.q);
         setAuthor(resetParams.author);
         setSort(resetParams.sort);
-        fetchFeed(1, resetParams);
+        setSearchParams(buildSearchParams({ page: 1, ...resetParams }));
+    };
+
+    const handlePageChange = (nextPage) => {
+        setSearchParams(
+            buildSearchParams({ page: nextPage, game, mode, q, author, sort })
+        );
     };
 
     // ✅ [수정] onLike 함수가 '_clientLiked' 대신 'liked' 속성을 업데이트합니다.
@@ -186,7 +236,7 @@ export default function Feed() {
                 currentPage={page}
                 totalItems={totalLogs}
                 itemsPerPage={ITEMS_PER_PAGE}
-                onPageChange={fetchFeed}
+                onPageChange={handlePageChange}
             />
         </div>
     );

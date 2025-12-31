@@ -16,7 +16,7 @@ const router = express.Router();
 // ✅ 테스트를 위해 페이지당 2개로 설정
 const ITEMS_PER_PAGE = 2;
 
-// 생성
+// 로그 생성: 입력 검증 + 쿨다운 적용.
 router.post(
     "/",
     protect,
@@ -70,6 +70,7 @@ router.post(
 );
 
 // ✅ [수정] 내 로그 (페이지네이션 적용)
+// 내 로그 목록 조회(페이지네이션).
 router.get("/", protect, async (req, res) => {
     try {
         const { page, size } = normalizePagination(req.query.page, req.query.size, {
@@ -91,6 +92,7 @@ router.get("/", protect, async (req, res) => {
 });
 
 // ✅ [수정] 내 로그 검색 (페이지네이션 적용)
+// 내 로그 검색(페이지네이션).
 router.get("/search", protect, async (req, res) => {
     try {
         const q = trimString(req.query.q, 100);
@@ -242,6 +244,7 @@ router.get("/public/feed", async (req, res) => {
 });
 
 // 수정
+// 로그 수정(허용 필드만 업데이트).
 router.patch("/:id", protect, async (req, res) => {
     try {
         const fields = {};
@@ -308,6 +311,7 @@ router.patch("/:id", protect, async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+// 로그 삭제 + 삭제 로그 기록.
 router.delete("/:id", protect, async (req, res) => {
     try {
         const doc = await Log.findOne({ _id: req.params.id, userId: req.user.id });

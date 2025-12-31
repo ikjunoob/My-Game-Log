@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// 삭제 이력 최소 기록.
 const deletionLogSchema = new mongoose.Schema(
     {
         actorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

@@ -34,3 +34,11 @@ export const adminSearchLogs = async ({ q, user, from, to, isPublic, page, size 
 
 export const adminDeleteLog = async (id) =>
     (await api.delete(`/api/admin/logs/${id}`)).data;
+
+// 관리자 백업 JSON 다운로드 요청.
+export const adminExportData = async ({ type } = {}) => {
+    const p = new URLSearchParams();
+    if (type) p.append("type", type);
+    const suffix = p.toString() ? `?${p.toString()}` : "";
+    return api.get(`/api/admin/backup${suffix}`, { responseType: "blob" });
+};
