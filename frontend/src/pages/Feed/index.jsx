@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
 import Pagination from "../../components/Pagination";
 import { ITEMS_PER_PAGE } from "../../constants/pagination";
 import usePagination from "../../hooks/usePagination";
+import { endPerf, startPerf } from "../../utils/perf";
 import "./Feed.scss"; // ✅ Feed 전용 SCSS
 
 export default function Feed() {
@@ -22,6 +23,8 @@ export default function Feed() {
     const { page, totalItems: totalLogs, setPagination: setFeedPagination } = usePagination();
     // URL 쿼리와 검색 상태를 동기화한다.
     const [searchParams, setSearchParams] = useSearchParams();
+    // ??? ?? ??? ????.
+    const perfRef = useRef(null);
 
     // 현재 상태를 URL 파라미터로 변환한다.
     const buildSearchParams = (next) => {
@@ -80,6 +83,10 @@ export default function Feed() {
             setErr(e?.response?.data?.message || "피드를 불러오지 못했습니다.");
         } finally {
             setLoading(false);
+            if (perfRef.current) {
+                endPerf(perfRef.current.label, perfRef.current.meta);
+                perfRef.current = null;
+            }
         }
     }
 
@@ -99,6 +106,12 @@ export default function Feed() {
         setAuthor(nextAuthor);
         setSort(nextSort);
 
+        const label = "feed:list";
+        startPerf(label);
+        perfRef.current = {
+            label,
+            meta: { page: nextPage, game: nextGame, mode: nextMode, sort: nextSort },
+        };
         fetchFeed(nextPage, {
             game: nextGame,
             mode: nextMode,
