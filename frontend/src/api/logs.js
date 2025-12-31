@@ -7,6 +7,8 @@ export const listLogs = async (params = {}) => {
     return (await api.get(`/api/logs?${p.toString()}`)).data;
 };
 
+export const getLogById = async (id) => (await api.get(`/api/logs/${id}`)).data;
+
 export const createLog = async (body) => (await api.post("/api/logs", body)).data;
 export const updateLog = async (id, body) => (await api.patch(`/api/logs/${id}`, body)).data;
 export const deleteLog = async (id) => (await api.delete(`/api/logs/${id}`)).data;
@@ -16,6 +18,9 @@ export const listPublicFeed = async (params = {}) => {
     const p = new URLSearchParams(params);
     return (await api.get(`/api/logs/public/feed?${p.toString()}`)).data;
 };
+
+export const getPublicLogById = async (id) =>
+    (await api.get(`/api/logs/public/${id}`)).data;
 
 export const toggleLike = async (id) =>
     (await api.post(`/api/logs/${id}/like`)).data;

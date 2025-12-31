@@ -105,6 +105,16 @@
         gap: 1rem;
     }
 
+    .log-item__link {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+        min-width: 0;
+        text-decoration: none;
+        color: inherit;
+    }
+
     .log-item__image {
         width: 72px;
         height: 72px;
@@ -215,6 +225,12 @@
             flex-direction: column;
             align-items: stretch;
             gap: 1rem;
+        }
+
+        .log-item__link {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
         }
 
         .log-item__image {

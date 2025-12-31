@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { listPublicFeed, toggleLike } from "../../api/logs";
 import { GAME_OPTIONS } from "../../constants";
 import Pagination from "../../components/Pagination";
@@ -203,6 +203,7 @@ export default function Feed() {
                 {logs.map((l) => (
                     <li key={l._id} className="card log-item">
                         <div className="log-item__inner">
+                            <Link className="log-item__link" to={`/feed/${l._id}`} state={{ log: l }}>
                             {l.image?.url && (
                                 <img
                                     className="log-item__image"
@@ -226,6 +227,7 @@ export default function Feed() {
                             </div>
 
                             {/* ✅ [수정] '_clientLiked' 대신 'l.liked'를 사용합니다. */}
+                            </Link>
                             <button
                                 className={`btn ${l.liked ? '' : 'btn--secondary'}`}
                                 disabled={!isAuthed}
